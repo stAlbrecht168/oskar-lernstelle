@@ -29,4 +29,5 @@ jobs:
           node --check journeys-v05.js
           node --check journey-generator-v06.js
           node --check connections-v07.js
+          node --check auto-material-v09.js
           node --check worker/index.js
