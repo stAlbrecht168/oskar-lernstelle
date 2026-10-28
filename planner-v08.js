@@ -63,7 +63,13 @@
       else return {exam:primary, days:0, phase:{title:'Klausurtag – viel Erfolg!',detail:'Heute keine zusätzliche Pflichtübung.', duration:0, level:0, type:'exam'},extra:null};
     }
     var extra = exams.find(function (e) {return e.id !== primary.id && e.date > day && daysBetween(day, e.date) <= 12;});
-    return {exam:primary, days:left, phase:phase(left), extra:extra || null};
+    var step=phase(left);
+    if(globalThis.OskarAssessmentCore && typeof globalThis.oskarExportAssessments==='function'){
+      var focusRows=globalThis.OskarAssessmentCore.focus(globalThis.oskarExportAssessments(),store.errors,EXAMS,new Date(day+'T12:00:00'));
+      var matching=focusRows.find(function(x){return x.subject===primary.id && x.kind==='assessment';});
+      if(matching)step.detail='Dein Schwerpunkt: '+matching.topic+'. '+step.detail;
+    }
+    return {exam:primary, days:left, phase:step, extra:extra || null};
   }
   function learned(day) {
     return (Array.isArray(store.days) && store.days.includes(day)) || store.studyLog.some(function (x) {return x.date === day;});

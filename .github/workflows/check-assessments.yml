@@ -1,0 +1,24 @@
+name: Lernstelle prüfen
+on:
+  pull_request:
+  push:
+    branches: [feature/assessment-learning-plan]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Javascript Syntax
+        run: |
+          node --check assessment-core-v08.js
+          node --check assessment-v08.js
+          node --check worker/index.js
+          node --check worker/assessment.js
+      - name: Worker and assessment tests
+        run: npm test
+        working-directory: worker
