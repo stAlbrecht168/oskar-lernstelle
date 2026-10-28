@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const page=readFileSync(new URL('../index.html', import.meta.url),'utf8');
 const planner=readFileSync(new URL('../planner-v08.js', import.meta.url),'utf8');
+const study=readFileSync(new URL('../study-v04.js', import.meta.url),'utf8');
 
 test('one primary mission and no duplicate daily mission card',()=>{
  assert.equal((page.match(/id="heroBtn"/g)||[]).length,1);
@@ -40,4 +41,26 @@ test('left-side learning content is primary and aside contains only supporting p
  assert.ok(block.indexOf('id="reviewBtn"')>0);
  assert.ok(block.indexOf('id="reviewBtn"')<block.indexOf('<aside class="right-col">'));
  assert.ok(block.indexOf('id="exams"')>block.indexOf('<aside class="right-col">'));
+});
+
+
+test('subject progress belongs to learning path, not a duplicated sidebar panel',()=>{
+ const learnStart=page.indexOf('<section class="panel" id="learn">');
+ const asideStart=page.indexOf('<aside class="right-col">',learnStart);
+ const learnMarkup=page.slice(learnStart,asideStart);
+ const rightMarkup=page.slice(asideStart,page.indexOf('</aside>',asideStart));
+ assert.ok(learnMarkup.includes('id="progressPercent"'));
+ assert.ok(learnMarkup.includes('id="progressBar"'));
+ assert.ok(learnMarkup.includes('id="progressTrack"'));
+ assert.ok(learnMarkup.includes('Lernpfad geschafft'));
+ assert.ok(!rightMarkup.includes('id="progress"'));
+ assert.ok(!rightMarkup.includes('progressPercent'));
+ assert.ok(!page.includes('id="progressXp"'));
+ assert.ok(page.includes('id="xp"'));
+ assert.ok(page.includes('id="wins"'));
+ assert.ok(page.includes('id="streak"'));
+ assert.equal((page.match(/id="progressPercent"/g)||[]).length,1);
+ assert.match(study,/Math\.round\(done\/3\*100\)/);
+ assert.match(study,/progressTrack'\)\.setAttribute\('aria-valuenow'/);
+ assert.ok(!study.includes('subjectCounter'));
 });
