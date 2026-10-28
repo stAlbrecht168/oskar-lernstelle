@@ -27,6 +27,8 @@ render=function(){originalRender();
  $('customPracticeBtn').disabled=!n;$('customPracticeBtn').textContent=n?'Schulstoff üben · '+n+' Aufgaben':'Noch keine freigegebenen Aufgaben';
  $('materialsList').querySelectorAll('.source-item').forEach((el,i)=>{el.hidden=store.materials[i]?.subject!==selected;});
  $('materialCount').textContent='('+notes+')';
+ $('cardsList').querySelectorAll('[data-card-index]').forEach(el=>{el.hidden=cards[Number(el.dataset.cardIndex)]?.subject!==selected;});
+ const selectedCards=cards.filter(x=>x.subject===selected);$('cardCount').textContent=selectedCards.filter(x=>x.status!=='approved').length+' zu prüfen · '+selectedCards.filter(x=>x.status==='approved').length+' freigegeben';
  $('studyNotice').textContent=has?(n?'Deine Levels verwenden jetzt die freigegebenen Fragen aus dieser Materialbibliothek.':'Material vorhanden. Erzeuge Aufgaben und gib sie frei, um die Levels zu starten.'):'Noch kein Material für dieses Fach. Du kannst Demofragen üben oder Schulstoff hinzufügen.';
  const c=EXAMS.filter(e=>[0,1,2].some(i=>isLevelDone(e.id,i))).reduce((s,e)=>s+[0,1,2].filter(i=>isLevelDone(e.id,i)).length,0);$('progressPercent').textContent=Math.round(c/21*100)+' %';$('progressBar').style.width=Math.round(c/21*100)+'%';$('wins').textContent=c;
  $('materialSubject').value=selected;
