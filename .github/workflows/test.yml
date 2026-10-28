@@ -1,0 +1,32 @@
+name: Lernstelle Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  worker-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Tests für KI-Dienst und Quellenbelege
+        working-directory: worker
+        run: npm test
+  browser-script-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser-JavaScript auf Syntaxfehler prüfen
+        run: |
+          node --check study-v04.js
+          node --check journeys-v05.js
+          node --check journey-generator-v06.js
+          node --check connections-v07.js
+          node --check worker/index.js
