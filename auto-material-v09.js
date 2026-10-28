@@ -192,6 +192,13 @@ const AUTO_MATERIAL_STYLES=String.raw`
 #materialAdvanced .auto-advanced-body{padding-top:20px}
 #materialAdvanced .parent-tabs{display:flex;flex-wrap:wrap;margin-bottom:18px}
 #materialAdvanced .manual-card{margin-top:24px}
-\`;
+`;
 const css=document.createElement('style');css.textContent=AUTO_MATERIAL_STYLES;document.head.appendChild(css);
+// Den bisherigen zweistufigen Dateiimport durch den automatischen Ablauf ersetzen.
+// Capture verhindert, dass der alte Handler anschließend nur das Textfeld befüllt.
+uploadElement.addEventListener('change',event=>{
+  event.stopImmediatePropagation();
+  const file=event.target.files?.[0];
+  if(file)void ingestSchoolFile(file);
+},true);
 setupSimplifiedMaterials();
