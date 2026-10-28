@@ -1,6 +1,10 @@
 name: KI-Dienst bereitstellen
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
 permissions:
   contents: read
 jobs:
