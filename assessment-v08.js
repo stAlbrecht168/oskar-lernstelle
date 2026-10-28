@@ -6,6 +6,7 @@ let assessments=[];
 try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))assessments=saved.filter(x=>x&&typeof x.subject==='string').slice(0,100);}catch{}
 const el=id=>document.getElementById(id),escape=noHtml,core=globalThis.OskarAssessmentCore;
 function save(){
+  if(globalThis.oskarLocal?.isReady()){globalThis.oskarLocal.snapshot();return true;}
   try{localStorage.setItem(KEY,JSON.stringify(assessments));return true;}
   catch{toast('Lokaler Speicher voll. Bitte Daten sichern und nicht benötigte Arbeiten löschen.');return false;}
 }
