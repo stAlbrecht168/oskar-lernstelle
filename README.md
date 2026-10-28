@@ -47,7 +47,13 @@ Für PDF- und Bildimport werden Open-Source-Bibliotheken und ggf. Sprachmodelle 
 
 Das GitHub-Repository und GitHub Pages sind **öffentlich**. Keine Originalunterlagen, Namen in Schulheften, Fotos von Personen, Zugangsdaten oder persönliche Backups einchecken. Quellen, Wissenskarten und Lernstände liegen im `localStorage` **nur des jeweiligen Browsers**. Der Elternbereich ist bislang nicht durch ein Passwort geschützt. Gerät und Browserzugriff schützen. JSON-Backups enthalten Schulstoff und Lerndaten und gehören nicht in ein öffentliches Repository.
 
-Es existiert derzeit **kein** serverseitiger KI-Dienst, keine Datenbank, keine Anmeldung und keine automatische Synchronisation. Auf mehreren Geräten gibt es bis zur Backend-Erweiterung getrennte Lernstände; Daten lassen sich manuell per Export/Import übertragen.
+Es existiert derzeit **kein bereitgestellter** KI-Dienst, keine Datenbank, keine Anmeldung und keine automatische Synchronisation. Der optionale KI-Worker ist nur als Quellcode vorbereitet. Auf mehreren Geräten gibt es bis zur Backend-Erweiterung getrennte Lernstände; Daten lassen sich manuell per Export/Import übertragen.
+
+## Optionale generative KI (noch nicht aktiv)
+
+Im Elternbereich gibt es zusätzlich `KI-Vorschläge`. Dafür liegt unter [`worker/`](worker/) ein separat zu betreibender **Cloudflare-Worker-Prototyp**. Der Worker sendet einen ausgewählten Quelltext an die OpenAI Responses API, verlangt einen privaten Zugangscode und filtert Karten ohne wörtliche Textbelege aus. **Alle Ergebnisse müssen vor dem Üben freigegeben werden.** Er ist bislang nicht deployt, nicht mit API-Zugangsdaten versehen und nicht auf Produktion abgesichert. Details und Sicherheitsgrenzen: [`worker/README.md`](worker/README.md).
+
+Der lokale Regelgenerator bleibt auch ohne KI und API-Kosten nutzbar. KI-Aufrufe senden Schulstoff bewusst an externe Dienste, weshalb du die Materialien zuvor auf private Angaben prüfen solltest.
 
 ## GitHub Pages veröffentlichen
 
