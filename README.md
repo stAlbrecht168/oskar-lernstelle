@@ -4,6 +4,7 @@
 
 - **Lern-App:** [Oskars Lernstelle öffnen](https://stalbrecht168.github.io/oskar-lernstelle/)
 - **Second Brain:** [Materialbibliothek und Wissensbasis öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#second-brain)
+- **Second-Brain-Konzept:** [Zielbild und Anforderungen](docs/second-brain-konzept.md)
 - **Lernplan:** [14-Tage-Lernplan öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#lernplan)
 - **Lerntracking:** [Lernübersicht öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#tracking)
 - **KI-Dienst einrichten:** [Anleitung für den Cloudflare Worker](worker/README.md)
