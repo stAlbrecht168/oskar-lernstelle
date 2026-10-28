@@ -38,14 +38,12 @@ function journeyQuiz(id){
  return {question:WATER_DEMO[id],isDemo:true};
 }
 function createDiscoveries(){
- const panel=document.createElement('section');panel.className='panel discover-panel';panel.id='discoveries';
- panel.innerHTML=`<div class="panel-head"><h2>Entdeckerreisen</h2><span class="caption">Fächer verbinden</span></div>
+ const panel=document.createElement('section');panel.className='discover-panel';panel.id='discoveries';
+ panel.innerHTML=`<div class="panel-head"><h2>Entdeckerreisen</h2></div>
  <div class="journey-intro jmedia-intro"><img class="jmedia-img" loading="lazy" decoding="async" src="${JOURNEY_MEDIA_IMAGES.water.src}" alt="${JOURNEY_MEDIA_IMAGES.water.alt}"><div class="jmedia-intro-copy"><span class="journey-flag">Unsere erste Reise</span><h3>Das Geheimnis des Wassers</h3><p>Bilder, Videos und Rätsel – folge der Spur durch drei Schulfächer.</p><span class="journey-subjects">🧮 Mathe · 🌱 Biologie · 🌍 Erdkunde</span></div><span class="jmedia-intro-credit">CC0 · <a href="${JOURNEY_MEDIA_IMAGES.water.source}" target="_blank" rel="noopener noreferrer">Bildquelle</a></span></div>
  <div class="journey-progress"><div class="journey-progress-label"><strong id="journeyProgressText">0 von 6 Stationen</strong><span>Du bestimmst den Weg</span></div><div class="journey-progress-track"><div id="journeyProgressFill"></div></div></div>
  <div id="journeyMap" class="journey-map" aria-label="Stationen der Entdeckerreise"></div>
- <div class="journey-footnote">Inspiration: BBC Tunnels. Das Video ist ein thematischer Einstieg, kein Beleg für die Aufgaben. Inhalte vor dem Ansehen altersgerecht prüfen.</div>
- <div class="bridge-head"><h3>Verbindungen aus deinem Schulstoff</h3><p>Die KI untersucht Quellen aus unterschiedlichen Fächern automatisch und schlägt konkrete Verbindungen mit Quellentexten vor. Dazu muss der KI-Dienst verbunden sein.</p></div>
- <div id="bridgeList" class="bridge-list"></div>`;
+ `;
  $('learn').after(panel);
  const overlay=document.createElement('div');overlay.className='overlay';overlay.id='journeyOverlay';overlay.setAttribute('role','presentation');
  overlay.innerHTML='<section class="dialog journey-dialog" role="dialog" aria-modal="true" aria-labelledby="journeySceneTitle"><div class="dialog-head"><strong id="journeySceneHead">Entdeckerreise</strong><button type="button" class="close" id="closeJourney" aria-label="Entdeckerreise schließen">×</button></div><div class="dialog-content journey-scene" id="journeySceneBody"></div></section>';
@@ -67,8 +65,7 @@ function renderDiscoveries(){
  return `<div class="journey-node ${complete?'is-done':unlocked?'is-open':'is-locked'}">
  <div class="journey-node-number">${i+1}</div><button type="button" data-journey="${s.id}" ${unlocked?'':'disabled'} aria-label="${noHtml(s.name)}: ${status}"><span class="journey-node-icon">${complete?'✓':s.icon}</span>${journeyMediaThumb(s.subject?journeyMediaKey(s.name,s.subject):s.id==='final'?'earth':'water')}<span class="journey-node-copy"><strong>${noHtml(s.name)}</strong><small>${status}${s.subject?' · '+noHtml(subject(s.subject).name):''}</small></span><span aria-hidden="true">${unlocked?'›':'🔒'}</span></button></div>`;
  }).join('');
- if(typeof renderAiConnections==='function')renderAiConnections();
- else $('bridgeList').textContent='KI-Verbindungen werden geladen.';
+ // KI-Verbindungen werden im Hintergrund verwendet, ohne weitere Listen im Lernpfad.
 }
 function openJourney(stepId){if(!journeyUnlocked(stepId)){toast('Entdecke zuerst die vorherigen Stationen.');return;}
  const step=WATER_JOURNEY.steps.find(s=>s.id===stepId);if(!step)return;
@@ -128,7 +125,7 @@ const JOURNEY_STYLES=`
 .journey-node.is-done .journey-node-number{background:#38b884;color:#fff;border-color:#38b884}.journey-node.is-open .journey-node-number{background:#e6f8ed;color:#138756;border-color:#77cda8}
 .journey-node button{min-width:0;display:flex;align-items:center;gap:11px;text-align:left;flex:1;padding:10px 14px;border:1px solid #e5ebf5;background:#fff;border-radius:17px;color:#253654;font:inherit;box-shadow:0 4px 10px rgba(31,55,92,.03)}
 .journey-node button:disabled{cursor:not-allowed;background:#f5f6fa;color:#8e9bb1;box-shadow:none}.journey-node.is-open button{border-color:#77cda8;background:#f6fcf8}.journey-node-icon{font-size:25px;width:34px;text-align:center}.journey-node-copy{flex:1;min-width:0;display:grid;gap:1px}.journey-node-copy strong{font-size:13px}.journey-node-copy small{font-size:11px;color:#7b8ba4}
-.journey-footnote{font-size:12px;color:#79859b;line-height:1.5;margin:10px 0 24px}.bridge-head{border-top:1px solid #e6eaf3;padding-top:20px}.bridge-head h3{margin:0 0 4px;font-size:17px}.bridge-head p{font-size:13px;color:#6c7990}
+
 .bridge-list{display:grid;gap:13px}.bridge-empty{background:#f7f9fd;border:1px dashed #d5dfef;border-radius:15px;padding:17px;color:#74829c;font-size:13px}.bridge-card{background:#fbfcff;border:1px solid #e1e9f5;border-radius:18px;padding:17px}.bridge-card>strong{font-size:15px}.bridge-card p{font-size:12px;color:#64738f;margin:6px 0}.bridge-sources{display:grid;gap:10px;margin:12px 0}.bridge-sources>div{padding:12px;background:#fff;border:1px solid #e7ecf4;border-radius:12px}.bridge-sources b{font-size:12px}.bridge-sources blockquote{border-left:3px solid #9dc9bd;font-size:12px;margin:5px 0 0;padding-left:9px;color:#5a6680}
 .journey-dialog{max-width:610px}.journey-scene{overflow-y:auto}.journey-scene h2{font-size:24px;letter-spacing:-.6px;line-height:1.2;margin:6px 0 16px}.journey-scene p{color:#5c6b81;font-size:15px}.journey-scene .scene-badge{font-size:12px;font-weight:900;color:#239b70;letter-spacing:.2px}.journey-scene .journey-action{margin-top:14px}.journey-choices{display:grid;gap:9px;margin:18px 0}.journey-choice{border:2px solid #e4eaf4;background:#fff;border-radius:14px;padding:13px;text-align:left;color:#304060;display:flex;align-items:center;gap:10px;font:inherit;font-weight:700}.journey-choice span{border:1px solid #cad5e8;width:28px;height:28px;display:grid;place-items:center;border-radius:9px}.journey-choice.active{background:#eff1ff;border-color:#7f83ed}.journey-choice:disabled{cursor:default}.journey-feedback{border-radius:13px;padding:11px 13px;margin-top:8px;font-size:13px;font-weight:700}.journey-feedback.success{background:#e4f8eb;color:#16794e}.journey-feedback.retry{background:#fff2dd;color:#825a18}.journey-scene textarea{width:100%;border-radius:13px;border:1px solid #d5dfed;padding:12px}.journey-link{display:inline-block;text-decoration:none;margin:12px 0}
 @media(max-width:560px){.journey-intro{padding:17px}.journey-intro h3{font-size:20px}.journey-illustration{font-size:47px}.journey-node button{padding:9px}.journey-node-copy strong{font-size:12px}}
