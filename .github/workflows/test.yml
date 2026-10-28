@@ -32,4 +32,4 @@ jobs:
           node --check auto-material-v09.js
           node --check worker/index.js
       - name: UX-Hauptmission und Seitenhierarchie prüfen
-        run: node --test tests/ux-primary-mission.test.mjs tests/ux-frictionless-lessons.test.mjs
+        run: node --test tests/ux-primary-mission.test.mjs tests/ux-frictionless-lessons.test.mjs tests/material-music-recovery.test.mjs
