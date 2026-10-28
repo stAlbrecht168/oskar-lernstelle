@@ -24,9 +24,17 @@ with sync_playwright() as p:
   assert not errs
   assert page.locator('[data-subject="biology"]').count()==1
   assert page.locator('[data-journey]').count()==6
-  page.locator('[data-journey="start"]').click();page.locator('[data-jaction="complete"]').click()
+  assert page.locator('.jmedia-intro .jmedia-img').count()==1
+  assert page.locator('.journey-node .jmedia-thumb').count()==6
+  page.locator('[data-journey="start"]').click()
+  assert page.locator('#journeySceneBody .jmedia--scene img').count()==1
+  page.locator('[data-jaction="complete"]').click()
   assert page.locator('#journeySceneTitle').inner_text().startswith('Ein Video')
   assert 'e-IlDMOaX8A' in page.locator('.journey-link').get_attribute('href')
+  assert page.locator('.jmedia-video').count()==2
+  assert page.locator('.jmedia-video iframe').count()==0
+  page.locator('[data-jmedia-play="simpli-water"]').click()
+  assert 'youtube-nocookie.com/embed/e-IlDMOaX8A' in page.locator('.jmedia-video iframe').first.get_attribute('src')
   page.locator('[data-jaction="complete"]').click()
   page.locator('[data-journey="math"]').click()
   assert '750 ml' in page.locator('#journeySceneBody').inner_text()
