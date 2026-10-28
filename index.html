@@ -120,7 +120,7 @@ function renderKnowledge(){
   $('cardCount').textContent=drafts+' zu prüfen · '+approved+' freigegeben';
   $('cardsList').innerHTML=cards.length?cards.slice().reverse().map(c=>{
     const index=cards.indexOf(c), isDraft=c.status!=='approved';
-    return `<article class="knowledge-card" data-card-index="${index}"><div class="card-top"><b>${noHtml(subject(c.subject)?.icon||'📖')} ${noHtml(subject(c.subject)?.name||c.subject)}</b><span class="tiny-tag ${isDraft?'pending':'ready'}">${isDraft?'Entwurf':'Freigegeben'}</span></div>
+    return `<article class="knowledge-card" data-card-index="${index}"><div class="card-top"><b>${noHtml(subject(c.subject)?.icon||'📖')} ${noHtml(subject(c.subject)?.name||c.subject)}</b><span class="tiny-tag ${isDraft?'pending':'ready'}">${isDraft?'Entwurf':c.generatedByAI&&!c.reviewedByHuman?'KI-erstellt':'Freigegeben'}</span></div>
       <label>Begriff<input data-term value="${noHtml(c.term)}" maxlength="90" ${isDraft?'':'readonly'}></label>
       <label>Erklärung<textarea data-definition rows="2" maxlength="320" ${isDraft?'':'readonly'}>${noHtml(c.definition)}</textarea></label>
       <div class="card-origin">Quelle: ${noHtml(c.sourceTitle||'Manuell ergänzt')}${c.evidence?' · Beleg: „'+noHtml(c.evidence.slice(0,190))+'“':''}</div>
@@ -157,7 +157,7 @@ function onKnowledgeCardClick(e){
   else{
     const el=approve.closest('[data-card-index]');c.term=normalizeFact(el.querySelector('[data-term]').value);c.definition=normalizeFact(el.querySelector('[data-definition]').value);
     if(c.term.length<2||c.definition.length<4){toast('Begriff und Erklärung vervollständigen.');return;}
-    c.status='approved';
+    c.status='approved';c.reviewedByHuman=true;
   }
   persistCards();render();
 }
