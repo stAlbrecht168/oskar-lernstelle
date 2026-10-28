@@ -13,3 +13,11 @@ node_modules/
 
 # Oskars private school files, generated exercises and study progress
 /local-data/
+/materialien.json
+/lernkarten.json
+/aufgaben.json
+/lernstand.json
+/klassenarbeiten.json
+/entdeckerreisen.json
+/fachverbindungen.json
+/Originaldateien/
