@@ -30,7 +30,7 @@ function journeyMediaVideo(key){
  const m=JOURNEY_MEDIA_IMAGES[v.cover];
  return '<div class="jmedia-video" data-jmedia-video="'+key+'"><img class="jmedia-img" loading="lazy" decoding="async" src="'+m.src+'" alt="">'+
  '<div class="jmedia-video-shade"><span class="jmedia-video-label">'+v.channel+'</span><button type="button" class="jmedia-play" data-jmedia-play="'+key+'" aria-label="Video '+v.title+' abspielen">▶ <span>Video abspielen</span></button><strong>'+v.title+'</strong></div></div>'+
- '<p class="jmedia-video-note">YouTube wird erst nach Klick auf „Video abspielen“ eingebunden. '+v.note+'</p>';
+ '<p class="jmedia-video-note">YouTube wird erst nach Klick auf „Video abspielen“ eingebunden. '+v.note+' <a href="https://www.youtube.com/watch?v='+v.id+'" target="_blank" rel="noopener noreferrer">Alternativ bei YouTube öffnen</a></p>';
 }
 function journeyMediaBoot(){
  document.addEventListener('click',e=>{
