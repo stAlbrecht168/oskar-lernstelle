@@ -28,7 +28,7 @@ function journeyDone(id){return !!journeyState[id]?.done;}
 function setJourneyDone(id){if(journeyDone(id))return;journeyState[id]={...(journeyState[id]||{}),done:true};saveJourneyState();renderDiscoveries();}
 function journeyUnlocked(id){if(id==='start')return true;if(id==='video')return journeyDone('start');if(id==='final')return ['math','biology','geography'].filter(journeyDone).length>=2;return journeyDone('video');}
 function subjectMaterial(id){return store.materials.filter(m=>m.subject===id);}
-function topicQuestion(id,topic){const words=topic==='water'?['wasser','pflanz','wurzel','regen','niederschlag','liter',' ml']:BRIDGE_TOPICS.find(t=>t.id===topic)?.anchors||[];
+function topicQuestion(id,topic){const words=topic==='water'?['wasser','pflanz','wurzel','regen','niederschlag','liter',' ml']:[];
  return realQuestions(id).find(q=>words.some(w=>(q.q+' '+q.why).toLocaleLowerCase('de-DE').includes(w)))||null;
 }
 function journeyQuiz(id){
