@@ -32,6 +32,23 @@ Die optionale KI-Auswertung erfordert eine ausdrückliche Bestätigung. Entferne
 
 Der persönliche Lernplan priorisiert bestätigte Fehler und kommende Klassenarbeiten. Der offizielle niedersächsische Lehrplan wird nicht geändert.
 
+## Schulmaterial automatisch in Lernaufgaben umwandeln (Version 0.9)
+
+Die Materialbibliothek ist ein kompakter Dialog. Im normalen Ablauf sind nur zwei Eingaben sichtbar:
+
+1. **Schulfach auswählen.**
+2. **PDF, Foto oder Textdatei hochladen.**
+
+Anschließend wird die Datei ohne weiteren Speichern-Button lokal eingelesen und als Quelle gesichert. Die App zeigt die Schritte **Lesen, gespeichert, KI-Analyse, Übungen bereit** oder einen verständlichen Fehler an. Dateien, die in einer älteren Version nur ausgelesen, aber nicht gespeichert wurden, müssen erneut hochgeladen werden.
+
+Für Bilddateien wird die Texterkennung im Browser ausgeführt. Wenn ein PDF ausschließlich aus Scans besteht, versucht die App eine Texterkennung der ersten fünf Seiten. Textbasierte PDFs werden bis zur 15. Seite gelesen. Pro Datei gilt eine Grenze von 12 MB.
+
+Der vorhandene Cloudflare-KI-Worker generiert automatisch belegte Wissenskarten und Übungsfragen aus dem extrahierten Text. Die generierten Inhalte sind sofort in Oskars Fachlevels nutzbar, ohne zusätzliche manuelle Freigabe. Sie werden dabei ausdrücklich als **KI-erstellt** und nicht als von einer Person kontrolliert gekennzeichnet. Eine gelegentliche Stichprobenprüfung ist sinnvoll.
+
+Die Worker-URL ist bereits voreingestellt: `https://oskar-lernstelle-ai.sha-2d1.workers.dev`. Für den Aufruf benötigt die App weiterhin den privaten Zugriffscode des bereits eingerichteten Workers. Er wird bei Bedarf unter **Weitere Einstellungen und Korrekturen** eingegeben und nur für die aktuelle Browser-Sitzung gespeichert. Ohne Zugriffscode bleibt die hochgeladene Quelle gespeichert und als **KI-Verbindung fehlt** sichtbar. Nach dem Verbinden werden auch zuvor gespeicherte Materialien ohne KI-Aufgaben automatisch verarbeitet.
+
+Die Originaldateien werden nicht in GitHub abgelegt. Der ausgelesene Text, Lernstand und erzeugte Fragen liegen im lokalen Speicher des verwendeten Browsers. Bei einem Fehler meldet die App, ob die Datei übernommen wurde und lediglich die KI-Erzeugung fehlgeschlagen ist.
+
 ## Materialbibliothek und Lernpfad
 
 Die Materialbibliothek öffnet sich als Dialog über die Navigation auf Desktop und Smartphone. Der Lernpfad bleibt ohne zusätzliche Material-Verwaltungsflächen. Ein gesonderter Elternbereich existiert nicht mehr. Neue Quellen als Text, Markdown, textbasiertes PDF oder Bild (lokale Texterkennung) hinzufügen und auf erkannte Fehler kontrollieren. Aus Notizen lassen sich lokal Begriff-Erklärung-Karten vorschlagen.
