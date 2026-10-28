@@ -70,7 +70,7 @@ Dann `http://localhost:8000` öffnen. Für den Worker: `cd worker && npm test`.
 - Fortschritt und freie Abschlussreflexion werden lokal gespeichert und ab jetzt zusammen mit anderen Lernständen exportiert.
 - Seit Version 0.6 kann der Worker zusätzlich belegbasierte, fachübergreifende Reisen aus zwei bis vier Schulquellen vorschlagen. Ein Erwachsener prüft und gibt sie frei. Video-Inhalte werden nicht als Quellenbeleg für Aufgaben verwendet.
 
-Entwurfsentscheidung: [ADR 0002](docs/adr/0002-fachuebergreifende-entdeckerreisen.md). Browser-Smoketest: `python tests/browser-journeys.py` mit installierten Paketen Playwright, BeautifulSoup und Chromium.
+Entwurfsentscheidung: [ADR 0002](docs/adr/0002-fachuebergreifende-entdeckerreisen.md). Browser-Smoketest: `python tests/browser-journeys.py` mit installierten Paketen Playwright, BeautifulSoup und Chromium. Lernplan-Smoketest: `python tests/browser-planner.py` (gleiche Voraussetzungen).
 
 Die Testdatei verwendet ausschließlich erfundene Beispieldaten. Private Schulunterlagen gehören nicht ins Repository.
 ## Visuelle Entdeckerreisen, Version 0.7
