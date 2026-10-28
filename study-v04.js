@@ -39,7 +39,7 @@ function lessonItems(id,level){const all=realQuestions(id);if(!all.length)return
 const originalRender=render;
 render=function(){originalRender();
  const n=realQuestions(selected).length,has=hasSources(selected),done=[0,1,2].filter(i=>isLevelDone(selected,i)).length;
- $('pathPill').textContent=done+' / 3 Levels';$('subjectCounter').textContent=done+' von 3 geschafft';
+ $('pathPill').textContent=done+' / 3 Levels';const pct=Math.round(done/3*100);$('progressPercent').textContent=pct+' %';$('progressBar').style.width=pct+'%';$('progressTrack').setAttribute('aria-valuenow',String(pct));
  const pathButtons=$('path').querySelectorAll('[data-level]');const labels=$('path').querySelectorAll('.level-sub');
  pathButtons.forEach((btn,i)=>{const complete=isLevelDone(selected,i),unlocked=i===0||isLevelDone(selected,i-1);btn.disabled=!unlocked;btn.classList.toggle('complete',complete);btn.classList.toggle('unlocked',!complete&&unlocked);btn.textContent=complete?'⭐':unlocked?['🌱','🧠','🏆'][i]:'🔒';if(labels[i])labels[i].textContent=complete?'Geschafft · Wiederholen?':has&&!n?'Beispieltraining, bis KI-Aufgaben bereit sind':unlocked?(n?n+' Aufgaben aus deinem Schulstoff':'Beispieltraining'):'Erst Level '+i+' schaffen';});
  $('heroMeta').textContent=nextExam()?.date?'Nächste Klassenarbeit · '+dayLabel(nextExam().date):'Noch kein Klausurtermin eingetragen';
@@ -52,7 +52,7 @@ render=function(){originalRender();
  $('cardsList').querySelectorAll('[data-card-index]').forEach(el=>{el.hidden=cards[Number(el.dataset.cardIndex)]?.subject!==selected;});
  const selectedCards=cards.filter(x=>x.subject===selected);$('cardCount').textContent=selectedCards.filter(x=>x.status!=='approved').length+' zu prüfen · '+selectedCards.filter(x=>x.status==='approved').length+' freigegeben';
  $('studyNotice').textContent=has?(n?'Deine Levels verwenden automatisch erzeugte Aufgaben aus deinem Schulmaterial. KI-Ergebnisse können Fehler enthalten.':'Dein Material ist gespeichert. Bis KI-Aufgaben verfügbar sind, kannst du sofort Beispielaufgaben üben.'):'Du kannst sofort mit Beispielaufgaben loslegen und später eigenes Schulmaterial ergänzen.';
- const c=EXAMS.filter(e=>e.date&&[0,1,2].some(i=>isLevelDone(e.id,i))).reduce((s,e)=>s+[0,1,2].filter(i=>isLevelDone(e.id,i)).length,0);$('progressPercent').textContent=Math.round(c/21*100)+' %';$('progressBar').style.width=Math.round(c/21*100)+'%';$('wins').textContent=c;
+ const c=EXAMS.reduce((total,e)=>total+[0,1,2].filter(i=>isLevelDone(e.id,i)).length,0);$('wins').textContent=c;
  $('materialSubject').value=selected;
  renderAiTasks();
 };
