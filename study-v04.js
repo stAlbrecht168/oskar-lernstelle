@@ -1,14 +1,36 @@
-/* Lernstelle 0.4: Materialbibliothek direkt am Fach, KI-Aufgaben mit Freigabe. */
+/* Lernstelle: automatische KI-Übungen ohne manuelle Freigabe, mit transparentem Demo-Fallback. */
 'use strict';
 const TASK_KEY='oskar-lernstelle-tasks-v1';
 let aiTasks=[];
 try {const saved=JSON.parse(localStorage.getItem(TASK_KEY)||'[]');if(Array.isArray(saved))aiTasks=saved.filter(t=>t&&typeof t.question==='string');}catch{}
+// Bereits vorhandene, eindeutig an Schulquellen gebundene KI-Entwürfe freischalten.
+ // Manuelle Entwürfe ohne belegte Quelle bleiben unverändert.
+function activateExistingAiExercises(){
+ let changed=false;
+ const norm=s=>String(s||'').toLocaleLowerCase('de-DE').replace(/\s+/g,' ').trim();
+ for(const t of aiTasks){
+  if(t.status!=='draft'||!t.sourceId||!Array.isArray(t.options)||!Number.isInteger(t.correctIndex)||t.correctIndex<0||t.correctIndex>=t.options.length||typeof t.evidence!=='string'||t.evidence.length<10)continue;
+  const source=store.materials.find(m=>m.id===t.sourceId&&m.subject===t.subject);
+  if(source&&norm(source.text).includes(norm(t.evidence))){
+   t.status='approved';t.generatedByAI=true;t.reviewedByHuman=false;changed=true;
+  }
+ }
+ for(const card of cards){
+  if(card.status!=='draft'||!card.sourceId||typeof card.evidence!=='string'||card.evidence.length<10||typeof card.term!=='string'||typeof card.definition!=='string')continue;
+  const source=store.materials.find(m=>m.id===card.sourceId&&m.subject===card.subject);
+  if(source&&norm(source.text).includes(norm(card.evidence))){
+   card.status='approved';card.generatedByAI=true;card.reviewedByHuman=false;changed=true;
+  }
+ }
+ if(changed){try{localStorage.setItem(TASK_KEY,JSON.stringify(aiTasks));persistCards();}catch{}}
+}
+activateExistingAiExercises();
 function saveTasks(){try{localStorage.setItem(TASK_KEY,JSON.stringify(aiTasks));return true}catch{toast('Speicher voll. Bitte Backup erstellen.');return false}}
 function sourceTasks(id){return aiTasks.filter(t=>t.subject===id&&t.status==='approved').map(t=>({q:t.question,a:t.options,correct:t.correctIndex,why:t.explanation+' Quelle: '+t.sourceTitle+' · „'+t.evidence+'“',origin:id,index:'ai:'+t.id,custom:true,type:t.type,sourceTitle:t.sourceTitle}));}
 function realQuestions(id){return [...sourceTasks(id),...generatedQuestions(id)];}
 function hasSources(id){return store.materials.some(m=>m.subject===id);}
 function levelStudyKey(id,level){const keys=realQuestions(id).map(q=>q.index).sort().join('|');let h=5381;for(let i=0;i<keys.length;i++)h=((h<<5)+h)^keys.charCodeAt(i);return 'study:'+id+':'+level+':'+(h>>>0).toString(36);}
-function isLevelDone(id,l){return store.completed.includes(hasSources(id)?levelStudyKey(id,l):id+':'+l);}
+function isLevelDone(id,l){return store.completed.includes(realQuestions(id).length?levelStudyKey(id,l):id+':'+l);}
 function lessonItems(id,level){const all=realQuestions(id);if(!all.length)return [];
   // Jedes Level hat eine eigene Rotation. Zusätzliche Fragen werden verteilt.
   const count=Math.min(level===2?5:3,all.length),start=(level*3)%all.length;
@@ -19,17 +41,17 @@ render=function(){originalRender();
  const n=realQuestions(selected).length,has=hasSources(selected),done=[0,1,2].filter(i=>isLevelDone(selected,i)).length;
  $('pathPill').textContent=done+' / 3 Levels';$('subjectCounter').textContent=done+' von 3 geschafft';
  const pathButtons=$('path').querySelectorAll('[data-level]');const labels=$('path').querySelectorAll('.level-sub');
- pathButtons.forEach((btn,i)=>{const complete=isLevelDone(selected,i),unlocked=i===0||isLevelDone(selected,i-1);btn.disabled=has?(!n||!unlocked):!unlocked;btn.classList.toggle('complete',complete);btn.classList.toggle('unlocked',!complete&&unlocked);btn.textContent=complete?'⭐':unlocked?['🌱','🧠','🏆'][i]:'🔒';if(labels[i])labels[i].textContent=complete?'Geschafft · Wiederholen?':has&&!n?'Erst Aufgaben freigeben':unlocked?(has?n+' Fragen aus deinem Schulstoff':'Demoaufgaben'):'Erst Level '+i+' schaffen';});
+ pathButtons.forEach((btn,i)=>{const complete=isLevelDone(selected,i),unlocked=i===0||isLevelDone(selected,i-1);btn.disabled=!unlocked;btn.classList.toggle('complete',complete);btn.classList.toggle('unlocked',!complete&&unlocked);btn.textContent=complete?'⭐':unlocked?['🌱','🧠','🏆'][i]:'🔒';if(labels[i])labels[i].textContent=complete?'Geschafft · Wiederholen?':has&&!n?'Beispieltraining, bis KI-Aufgaben bereit sind':unlocked?(n?n+' Aufgaben aus deinem Schulstoff':'Beispieltraining'):'Erst Level '+i+' schaffen';});
  $('heroMeta').textContent=nextExam()?.date?'Nächste Klassenarbeit · '+dayLabel(nextExam().date):'Noch kein Klausurtermin eingetragen';
  const notes=store.materials.filter(m=>m.subject===selected).length;
  const ready=aiTasks.filter(t=>t.subject===selected&&t.status==='approved').length+approvedCards(selected).length;
- $('materialProgress').textContent=`${notes} ${notes===1?'Quelle':'Quellen'} · ${ready} geprüfte Karten und Aufgaben`;
- $('customPracticeBtn').disabled=!n;$('customPracticeBtn').textContent=n?'Schulstoff üben · '+n+' Aufgaben':'Noch keine freigegebenen Aufgaben';
+ $('materialProgress').textContent=`${notes} ${notes===1?'Quelle':'Quellen'} · ${ready} Lernkarten und Aufgaben`;
+ $('customPracticeBtn').disabled=false;$('customPracticeBtn').textContent=n?'Schulstoff üben · '+n+' Aufgaben':'Jetzt mit Beispielaufgaben üben';
  $('materialsList').querySelectorAll('.source-item').forEach((el,i)=>{el.hidden=store.materials[i]?.subject!==selected;});
  $('materialCount').textContent='('+notes+')';
  $('cardsList').querySelectorAll('[data-card-index]').forEach(el=>{el.hidden=cards[Number(el.dataset.cardIndex)]?.subject!==selected;});
  const selectedCards=cards.filter(x=>x.subject===selected);$('cardCount').textContent=selectedCards.filter(x=>x.status!=='approved').length+' zu prüfen · '+selectedCards.filter(x=>x.status==='approved').length+' freigegeben';
- $('studyNotice').textContent=has?(n?'Deine Levels verwenden jetzt die freigegebenen Fragen aus dieser Materialbibliothek.':'Material vorhanden. Erzeuge Aufgaben und gib sie frei, um die Levels zu starten.'):'Noch kein Material für dieses Fach. Du kannst Demofragen üben oder Schulstoff hinzufügen.';
+ $('studyNotice').textContent=has?(n?'Deine Levels verwenden automatisch erzeugte Aufgaben aus deinem Schulmaterial. KI-Ergebnisse können Fehler enthalten.':'Dein Material ist gespeichert. Bis KI-Aufgaben verfügbar sind, kannst du sofort Beispielaufgaben üben.'):'Du kannst sofort mit Beispielaufgaben loslegen und später eigenes Schulmaterial ergänzen.';
  const c=EXAMS.filter(e=>e.date&&[0,1,2].some(i=>isLevelDone(e.id,i))).reduce((s,e)=>s+[0,1,2].filter(i=>isLevelDone(e.id,i)).length,0);$('progressPercent').textContent=Math.round(c/21*100)+' %';$('progressBar').style.width=Math.round(c/21*100)+'%';$('wins').textContent=c;
  $('materialSubject').value=selected;
  renderAiTasks();
@@ -38,9 +60,9 @@ const originalRenderQuestion=renderQuestion;
 renderQuestion=function(){originalRenderQuestion();if(!session)return;const ex=subject(session.items[session.index].origin);$('questionKicker').textContent=ex.name+' · '+(session.review?'Wiederholung':'Level '+(session.level+1));};
 startLesson=function(id,level,errorsOnly=false){let items;
  if(errorsOnly){items=store.errors.map(findErrorQuestion).filter(Boolean).slice(0,8);if(!items.length){toast('Noch keine Fehler zum Wiederholen.');return;}}
- else if(hasSources(id)){items=lessonItems(id,level);if(!items.length){toast('Erst Material hinzufügen und Aufgaben freigeben.');chooseSubject(id);openMaterials();return;}}
+ else if(realQuestions(id).length){items=lessonItems(id,level);}
  else items=levelQuestions(id,level).map(q=>({...q,origin:id,index:BANK[id].indexOf(q)}));
- session={id,level,items,index:0,chosen:null,checked:false,correctCount:0,review:errorsOnly,custom:hasSources(id)};
+ session={id,level,items,index:0,chosen:null,checked:false,correctCount:0,review:errorsOnly,custom:realQuestions(id).length>0};
  $('lessonOverlay').classList.add('show');document.body.style.overflow='hidden';renderQuestion();
 };
 const originalFindErrorQuestion=findErrorQuestion;
@@ -53,7 +75,7 @@ finishLesson=function(){if(session?.custom&&!session.review){const {id,level,cor
  originalFinishLesson();store.completed=store.completed.filter(k=>k!==originalKey);persist();render();return;}
  originalFinishLesson();};
 const originalPrint=printWorksheet;
-printWorksheet=function(){if(!hasSources(selected))return originalPrint();const qs=realQuestions(selected),ex=subject(selected);if(!qs.length){toast('Es gibt noch keine freigegebenen Aufgaben.');return;}
+printWorksheet=function(){if(!realQuestions(selected).length)return originalPrint();const qs=realQuestions(selected),ex=subject(selected);
  $('printArea').innerHTML='<h1>Übungsblatt · '+noHtml(ex.name)+'</h1><div class="print-meta">Name: __________________ &nbsp;&nbsp; Datum: __________</div>'+qs.map((q,i)=>`<section class="print-question"><h2>${i+1}. ${noHtml(q.q)}</h2><div class="print-choices">${q.a.map((a,j)=>`<div>☐ ${String.fromCharCode(65+j)}) ${noHtml(a)}</div>`).join('')}</div></section>`).join('')+'<section class="answer-key"><h1>Lösungen und Quellen</h1>'+qs.map((q,i)=>`<p><strong>${i+1}. ${noHtml(q.a[q.correct])}</strong><br>${noHtml(q.why)}</p>`).join('')+'</section>';window.print();};
 function renderAiTasks(){const c=$('aiTaskList');if(!c)return;const current=aiTasks.filter(t=>t.subject===selected);
  c.innerHTML=current.length?current.slice().reverse().map(t=>{const index=aiTasks.indexOf(t),draft=t.status!=='approved';return `<article class="knowledge-card" data-task="${index}"><div class="card-top"><b>${noHtml(t.type==='true_false'?'Richtig oder falsch':t.type==='gap'?'Lücke ergänzen':'Auswahlfrage')}</b><span class="tiny-tag ${draft?'pending':'ready'}">${draft?'Entwurf':t.generatedByAI&&!t.reviewedByHuman?'KI-erstellt':'Freigegeben'}</span></div><label>Frage<input data-tq maxlength="240" value="${noHtml(t.question)}" ${draft?'':'readonly'}></label><div class="task-options">${t.options.map((v,j)=>`<label>Antwort ${j+1}<input data-opt="${j}" maxlength="140" value="${noHtml(v)}" ${draft?'':'readonly'}></label>`).join('')}</div><label>Richtige Antwort<select data-correct ${draft?'':'disabled'}>${t.options.map((v,j)=>`<option value="${j}" ${j===t.correctIndex?'selected':''}>${j+1}. ${noHtml(v.slice(0,65))}</option>`).join('')}</select></label><label>Erklärung<textarea data-explanation maxlength="420" ${draft?'':'readonly'}>${noHtml(t.explanation)}</textarea></label><div class="card-origin">Quelle: ${noHtml(t.sourceTitle)} · Beleg: „${noHtml(t.evidence)}“</div><div class="card-actions"><button class="btn btn-green btn-mini" data-task-approve="${index}">${draft?'Prüfen und freigeben':'Wieder bearbeiten'}</button><button class="btn btn-outline btn-mini" data-task-delete="${index}">Löschen</button></div></article>`;}).join(''):'<p class="empty">Noch keine KI-Aufgaben für dieses Fach.</p>';
