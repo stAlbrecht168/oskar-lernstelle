@@ -25,7 +25,7 @@ Sind für ein Fach noch keine KI-Fragen verfügbar, kann Oskar trotzdem sofort m
 
 Der Entdeckerbereich zeigt nur die Entdeckerreise mit Video, Stationen und weiteren Reisen. Die frühere Zwischenüberschrift „Fächer verbinden“, die eigenständige Bridge-Liste und der nicht mehr passende BBC-Tunnels-Hinweis wurden entfernt. Die fachübergreifende KI-Verknüpfung bleibt als Hintergrundfunktion erhalten und kann das Vorbefüllen neuer Reisen unterstützen.
 
-Die Oberfläche ist taskorientiert und offen gestaltet: **linke Hauptspalte** mit großzügigen Abständen, Lernpfad und illustrierten Entdeckungsstationen statt überall weißen Karten mit Umrandung. Die schmalere rechte Spalte zeigt zurückhaltend Termine, Fortschritt und ergänzende Videos. Modale Dialoge bleiben als klar abgegrenzte Flächen bestehen.
+Die Bereiche sind über dezente Flächenfarben voneinander getrennt: **Dein Lernpfad** auf einer weißen Fläche, **Entdeckerreisen** auf einem hellblau-grünen Hintergrund und die ergänzenden Termine und Videos in ruhigeren Nebenbereichen. Der Fokus liegt links auf den Lernaktionen. Die Flächen brauchen keine starken Umrandungen. XP, Lernserie und abgeschlossene Level stehen ausschließlich im Header, der Fachfortschritt direkt im Lernpfad.
 
 Automatische Prüfung: `node --test tests/ux-primary-mission.test.mjs tests/ux-frictionless-lessons.test.mjs`.
 
@@ -44,7 +44,7 @@ Die Startseite zeigt **Deine Tagesmission** direkt unter der großen Lernmission
 - **Täglich automatisch planen:** pro Tag eine kurze Hauptmission von ca. 10–15 Minuten, abhängig vom nächsten hinterlegten Klausurtermin. Bei mehreren anstehenden Arbeiten wird das nähere Datum priorisiert. Die App bietet Grundlagen, Anwenden, Fehlertraining und einen kurzen Wissenscheck am Vortag an. Der Plan wird beim Öffnen neu aus den aktuellen Terminen berechnet.
 - **Termine bearbeiten:** im Dialog unter **Klausurtermine**. Die vorhandenen Beispieltermine sind vorbelegt und müssen anhand des echten Schulplans geprüft werden. Biologie hat derzeit noch kein Datum. Ein leeres Feld ist zulässig.
 - **Erledigung zuverlässig erfassen:** Eine Einheit zählt erst, wenn das Quiz bis zum Ergebnis abgeschlossen wurde (nicht beim Öffnen oder Klicken auf eine Antwort). Im Bereich **Lerntracking** gibt es 14 Tage Rückblick, die Zahl tatsächlicher Lerntage, die aktuelle Serie, absolvierte Lerneinheiten und den Prozentsatz richtiger Antworten aus freigegebenem Schulstoff. Ältere Lerntage bleiben sichtbar, enthalten aber keine rückwirkend erfundenen Einzelwerte.
-- **Echte Inhalte statt Platzhalter:** Sobald Material eines Faches hochgeladen ist, sollen die KI-Vorschläge fachlich geprüft und freigegeben werden. Gibt es dann noch keine freigegebenen Aufgaben, wird die Tagesmission bewusst nicht mit unpassenden Demoaufgaben gefüllt.
+- **Echte Inhalte statt Platzhalter:** Hochgeladene Materialien werden automatisch analysiert. Belegbare KI-Aufgaben werden ohne zusätzliche Freigabe spielbar. Falls die KI-Aufgaben noch fehlen, kann Oskar ersatzweise mit ausdrücklich gekennzeichneten Beispielaufgaben starten.
 - **Datenschutz und Grenzen:** Tracking und Termine liegen im lokalen Browser. Auf einem anderen Gerät fehlt der Stand, solange er nicht mit einem privaten JSON-Backup übertragen wird. Es gibt keine automatische Elternbenachrichtigung, Synchronisierung, serverseitige Anwesenheitskontrolle oder Garantie, dass Oskar tatsächlich aufmerksam lernt. Kurzes gemeinsames Feedback nach dem Training bleibt sinnvoll.
 
 **Beispiel ab 28. Oktober 2026**, auf Grundlage der bislang eingetragenen Termine: Musik (02.11.) hat zunächst Priorität, am 28./29.10. Aufgaben anwenden, am 30./31.10. die Sicherheit prüfen und Fehler wiederholen, am 01.11. einen kurzen Wissenscheck. Anschließend rückt Kunst (05.11.) stärker in den Fokus. Bei geänderten Terminen werden die Aufgaben neu verteilt. Für eine echte Klausurvorbereitung müssen die zu prüfenden Themen als Schulmaterial hinterlegt sein.
@@ -56,6 +56,14 @@ Im Materialdialog unter **Noten & Arbeiten** kannst du Noten, korrigierte Arbeit
 Die optionale KI-Auswertung erfordert eine ausdrückliche Bestätigung. Entferne vor dem Senden Namen und persönliche Angaben. Vorschläge ohne belegte Fehler werden nicht übernommen; andere Vorschläge müssen geprüft und freigegeben werden. Eine Note allein begründet keine fachliche Schwäche.
 
 Der persönliche Lernplan priorisiert bestätigte Fehler und kommende Klassenarbeiten. Der offizielle niedersächsische Lehrplan wird nicht geändert.
+
+## Musikmaterial wird erkannt, aber noch nicht zum Üben verwendet
+
+Die Schulmaterialien liegen im lokalen Speicher des jeweiligen Browsers. Eine vorhandene Musik-PDF kann bereits gespeichert sein, obwohl bisher keine KI-Übungsfragen daraus erzeugt wurden. Das kann passieren, wenn der private KI-Zugriffscode noch fehlt, der Worker die Analyse nicht abschließen konnte oder kein ausreichend lesbarer Quellentext erkannt wurde.
+
+Der Lernpfad zeigt für das ausgewählte Fach jetzt einen kompakten Quellenstatus mit **Anzahl der gespeicherten Materialien und der tatsächlich spielbaren Aufgaben**. Falls KI-Aufgaben fehlen, erklärt er die Ursache und bietet „KI verbinden“ oder „Erneut versuchen“ an.
+
+Bereits gespeicherte Quellen ohne spielbare Quizfragen werden beim nächsten erfolgreichen Verbinden des KI-Dienstes erneut analysiert, einschließlich zuvor fehlgeschlagener Analysen. Ein erneuter PDF-Upload ist dafür nicht nötig. Eine Datei, die in einer alten Version nur ausgewählt, aber nicht gespeichert wurde, lässt sich hingegen nicht wiederherstellen. Materialien sind weiterhin nicht automatisch zwischen verschiedenen Browsern oder Geräten synchronisiert.
 
 ## Schulmaterial automatisch in Lernaufgaben umwandeln (Version 0.9)
 
