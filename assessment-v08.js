@@ -21,6 +21,7 @@ globalThis.oskarImportAssessments=raw=>{
 };
 const tab=document.createElement('button');tab.dataset.tab='assessments';tab.textContent='Noten & Arbeiten';
 document.querySelector('.parent-tabs').insertBefore(tab,document.querySelector('[data-tab="review"]'));
+tab.addEventListener('click',()=>setParentTab('assessments'));
 const panel=document.createElement('div');panel.id='parentAssessments';panel.hidden=true;
 panel.innerHTML=`
  <div class="hint"><strong>Aus Fehlern lernen.</strong> Noten allein zeigen keine konkreten Wissenslücken. Nutze Korrekturen, Lehrerkommentare oder eigene Beobachtungen, um den Übungsplan anzupassen. Der offizielle Lehrplan bleibt unverändert.</div>
