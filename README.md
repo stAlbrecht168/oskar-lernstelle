@@ -12,6 +12,18 @@ Das Second Brain ist derzeit kein separater Webdienst. Die Wissensbasis und die 
 
 Lern-App für Oskar, 5. Klasse Gymnasium in Niedersachsen. Das Interface orientiert sich an motivierenden, kleinen Duolingo-Lektionen, die Inhalte stammen aus selbst hinzugefügten Schulmaterialien.
 
+## Sofort lernen und offene Lernfläche
+
+Die Lernstelle verlangt **keine manuelle Aufgabenfreigabe**, bevor Oskar beginnen kann. Neue, anhand des Schultexts belegte KI-Fragen und Wissenskarten werden nach dem Upload direkt in den Fachlevels verwendet und bleiben als KI-generiert erkennbar. Bereits vorhandene, anhand der Originalquelle validierbare KI-Entwürfe werden ebenfalls aktiviert. Manuelle Entwürfe ohne Beleg bleiben unangetastet. KI-generierte Inhalte können Fehler enthalten und dürfen bei Bedarf im erweiterten Materialdialog kontrolliert werden.
+
+Sind für ein Fach noch keine KI-Fragen verfügbar, kann Oskar trotzdem sofort mit **deutlich gekennzeichnetem Beispieltraining** starten. Diese Fragen werden nicht als Inhalte aus seinem eigenen Heft dargestellt. Wenn passende KI-Aufgaben eintreffen, stellt der Lernpfad auf die schulstoffbasierten Levels um.
+
+Der Entdeckerbereich zeigt nur die Entdeckerreise mit Video, Stationen und weiteren Reisen. Die frühere Zwischenüberschrift „Fächer verbinden“, die eigenständige Bridge-Liste und der nicht mehr passende BBC-Tunnels-Hinweis wurden entfernt. Die fachübergreifende KI-Verknüpfung bleibt als Hintergrundfunktion erhalten und kann das Vorbefüllen neuer Reisen unterstützen.
+
+Die Oberfläche ist taskorientiert und offen gestaltet: **linke Hauptspalte** mit großzügigen Abständen, Lernpfad und illustrierten Entdeckungsstationen statt überall weißen Karten mit Umrandung. Die schmalere rechte Spalte zeigt zurückhaltend Termine, Fortschritt und ergänzende Videos. Modale Dialoge bleiben als klar abgegrenzte Flächen bestehen.
+
+Automatische Prüfung: `node --test tests/ux-primary-mission.test.mjs tests/ux-frictionless-lessons.test.mjs`.
+
 ## Eine Tagesmission als zentraler Lernfokus
 
 Die Startseite verwendet nur noch **eine zentrale Missionskarte**. Sie verbindet die nächste Klassenarbeit mit dem automatisch berechneten Tagesplan. Darin stehen das heutige Fach, die konkrete Lernphase, die geplante Dauer, der Status und die Information zur anstehenden Klassenarbeit. Der primäre Button **Tagesmission starten** führt immer durch den Tagesplan. **Lernplan & Tracking** bleibt als sekundäre Aktion in derselben Karte erreichbar.
