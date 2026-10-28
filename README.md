@@ -18,6 +18,14 @@ Die optionale KI generiert aus längeren Schultexten Wissenskarten und bis zu ne
 
 Die Daten werden lokal im Browser gespeichert. Backups als JSON enthalten Material, Lernfortschritt, Wissenskarten und KI-Fragen. Übertrage die Backups nicht in öffentliche Repositories. Die GitHub Page ist öffentlich, die persönlichen Schulmaterialien nicht.
 
+## Automatische fachübergreifende KI-Verbindungen
+
+Sobald mindestens zwei längere Quellen aus unterschiedlichen Fächern gespeichert sind und das private KI-Gateway verbunden ist, analysiert die App sie automatisch. Ein manueller Button zur Themensuche ist nicht nötig. Die Analyse startet nach einer kurzen Verzögerung, damit beim Hochladen mehrerer Dateien nicht für jede Datei sofort ein API-Aufruf erfolgt.
+
+Die KI sucht nach **fachlichen Lerntransfers** statt nach vorgegebenen Stichwörtern. Jede vorgeschlagene Verbindung nennt einen gemeinsamen Gedanken, erklärt den konkreten Nutzen der Kombination und stellt eine offene Entdeckerfrage. Die Originalzitate aus mindestens zwei verschiedenen Schulquellen werden im Worker und im Browser auf Übereinstimmung geprüft. Die Ergebnisse bleiben als **KI-Vorschläge** gekennzeichnet und sollten fachlich geprüft werden. Es ist ausdrücklich möglich, dass keine Verbindung gefunden wird.
+
+Für eine Analyse werden bis zu vier zuletzt relevante Quellen berücksichtigt, jeweils mit bis zu 3.500 Zeichen. Die KI-Vorschläge werden pro Quellenstand im Browser zwischengespeichert. Werden Materialien ergänzt, entfernt oder per Backup ausgetauscht, wird die Analyse aktualisiert. Der Zugriffscode für den KI-Dienst wird nicht dauerhaft gespeichert und muss nach einem Neuladen der Seite erneut eingegeben werden. Die Schultexte werden erst mit eingerichteter, authentifizierter KI-Verbindung an den Worker übermittelt. OpenAI-Nutzung kann Kosten verursachen.
+
 ## KI-Dienst
 
 Der Cloudflare-Worker ist vorbereitet und kann über GitHub Actions deployed werden, sobald vier private Secrets eingerichtet sind. Anleitung: [worker/README.md](worker/README.md). Die OpenAI-Nutzung ist kostenpflichtig und erfordert einen eigenen API-Schlüssel. Die GitHub-Page kann keinen geheimen OpenAI-Schlüssel sicher im Frontend speichern.
