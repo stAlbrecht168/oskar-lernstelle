@@ -1,0 +1,41 @@
+name: KI-Dienst bereitstellen
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+permissions:
+  contents: read
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Worker-Tests
+        run: npm test
+        working-directory: worker
+      - name: Zugangsdaten prüfen
+        env:
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENAI: ${{ secrets.OPENAI_API_KEY }}
+          ACCESS: ${{ secrets.OSKAR_ACCESS_TOKEN }}
+        run: |
+          test -n "$ACCOUNT" || { echo 'CLOUDFLARE_ACCOUNT_ID fehlt'; exit 1; }
+          test -n "$TOKEN" || { echo 'CLOUDFLARE_API_TOKEN fehlt'; exit 1; }
+          test -n "$OPENAI" || { echo 'OPENAI_API_KEY fehlt'; exit 1; }
+          test -n "$ACCESS" || { echo 'OSKAR_ACCESS_TOKEN fehlt'; exit 1; }
+      - name: Cloudflare Worker veröffentlichen
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          secrets: |
+            OPENAI_API_KEY
+            ACCESS_TOKEN
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ACCESS_TOKEN: ${{ secrets.OSKAR_ACCESS_TOKEN }}
