@@ -10,7 +10,7 @@ const uploadHistory=document.createElement('div');uploadHistory.id='autoMaterial
 function materialPlayable(m){
  if(!m)return false;
  if(aiTasks.some(t=>t.sourceId===m.id&&t.status==='approved'&&Array.isArray(t.options)&&t.options.length>=2))return true;
- return cards.filter(c=>c.sourceId===m.id&&c.status==='approved').length>=2;
+ return new Set(cards.filter(c=>c.sourceId===m.id&&c.status==='approved'&&typeof c.term==='string'&&typeof c.definition==='string').map(c=>String(c.term).toLocaleLowerCase('de-DE').trim())).size>=2;
 }
 function materialNeedsAnalysis(m){
  if(!m||typeof m.text!=='string'||m.text.trim().length<30)return false;
