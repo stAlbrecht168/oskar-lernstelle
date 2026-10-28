@@ -22,7 +22,7 @@ jobs:
       - name: Statische Dateien vorbereiten
         run: |
           mkdir -p public
-          cp index.html study-v04.js journeys-v05.js public/
+          cp index.html study-v04.js journeys-v05.js journey-generator-v06.js public/
           touch public/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
