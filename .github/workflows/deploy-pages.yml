@@ -19,10 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: JavaScript Syntax prüfen
+        run: |
+          node --check study-v04.js
+          node --check journey-media-v07.js
+          node --check journeys-v05.js
+          node --check journey-generator-v06.js
       - name: Statische Dateien vorbereiten
         run: |
           mkdir -p public
-          cp index.html study-v04.js journeys-v05.js journey-generator-v06.js public/
+          cp index.html study-v04.js journey-media-v07.js journeys-v05.js journey-generator-v06.js public/
           touch public/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
