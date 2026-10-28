@@ -40,7 +40,7 @@ function journeyQuiz(id){
 function createDiscoveries(){
  const panel=document.createElement('section');panel.className='panel discover-panel';panel.id='discoveries';
  panel.innerHTML=`<div class="panel-head"><h2>Entdeckerreisen</h2><span class="caption">Fächer verbinden</span></div>
- <div class="journey-intro"><div><span class="journey-flag">Unsere erste Reise</span><h3>Das Geheimnis des Wassers</h3><p>Eine spannende Frage. Ein Video. Drei Wege, die du selbst erkunden kannst.</p><span class="journey-subjects">🧮 Mathe · 🌱 Biologie · 🌍 Erdkunde</span></div><div class="journey-illustration" aria-hidden="true">💧</div></div>
+ <div class="journey-intro jmedia-intro"><img class="jmedia-img" loading="lazy" decoding="async" src="${JOURNEY_MEDIA_IMAGES.water.src}" alt="${JOURNEY_MEDIA_IMAGES.water.alt}"><div class="jmedia-intro-copy"><span class="journey-flag">Unsere erste Reise</span><h3>Das Geheimnis des Wassers</h3><p>Bilder, Videos und Rätsel – folge der Spur durch drei Schulfächer.</p><span class="journey-subjects">🧮 Mathe · 🌱 Biologie · 🌍 Erdkunde</span></div><span class="jmedia-intro-credit">CC0 · <a href="${JOURNEY_MEDIA_IMAGES.water.source}" target="_blank" rel="noopener noreferrer">Bildquelle</a></span></div>
  <div class="journey-progress"><div class="journey-progress-label"><strong id="journeyProgressText">0 von 6 Stationen</strong><span>Du bestimmst den Weg</span></div><div class="journey-progress-track"><div id="journeyProgressFill"></div></div></div>
  <div id="journeyMap" class="journey-map" aria-label="Stationen der Entdeckerreise"></div>
  <div class="journey-footnote">Inspiration: BBC Tunnels. Das Video ist ein thematischer Einstieg, kein Beleg für die Aufgaben. Inhalte vor dem Ansehen altersgerecht prüfen.</div>
@@ -65,7 +65,7 @@ function renderDiscoveries(){
  const unlocked=journeyUnlocked(s.id),complete=journeyDone(s.id);
  const status=complete?'Erkundet':unlocked?'Erkunden':'Noch gesperrt';
  return `<div class="journey-node ${complete?'is-done':unlocked?'is-open':'is-locked'}">
- <div class="journey-node-number">${i+1}</div><button type="button" data-journey="${s.id}" ${unlocked?'':'disabled'} aria-label="${noHtml(s.name)}: ${status}"><span class="journey-node-icon">${complete?'✓':s.icon}</span><span class="journey-node-copy"><strong>${noHtml(s.name)}</strong><small>${status}${s.subject?' · '+noHtml(subject(s.subject).name):''}</small></span><span aria-hidden="true">${unlocked?'›':'🔒'}</span></button></div>`;
+ <div class="journey-node-number">${i+1}</div><button type="button" data-journey="${s.id}" ${unlocked?'':'disabled'} aria-label="${noHtml(s.name)}: ${status}"><span class="journey-node-icon">${complete?'✓':s.icon}</span>${journeyMediaThumb(s.subject?journeyMediaKey(s.name,s.subject):s.id==='final'?'earth':'water')}<span class="journey-node-copy"><strong>${noHtml(s.name)}</strong><small>${status}${s.subject?' · '+noHtml(subject(s.subject).name):''}</small></span><span aria-hidden="true">${unlocked?'›':'🔒'}</span></button></div>`;
  }).join('');
  if(typeof renderAiConnections==='function')renderAiConnections();
  else $('bridgeList').textContent='KI-Verbindungen werden geladen.';
@@ -84,10 +84,16 @@ function openJourney(stepId){if(!journeyUnlocked(stepId)){toast('Entdecke zuerst
  html=`<div class="scene-badge">${noHtml(name)} · ${data.isDemo?'Beispielaufgabe':'Aus deinem Schulmaterial'}</div><h2 id="journeySceneTitle">${noHtml(q.q)}</h2><div class="journey-choices">${q.a.map((a,i)=>`<button type="button" data-janswer="${i}" class="journey-choice"><span>${i+1}</span>${noHtml(a)}</button>`).join('')}</div><div id="journeyAnswerFeedback" role="status" aria-live="polite"></div><button type="button" class="btn btn-green journey-action" data-jaction="check" data-subject="${step.subject}" disabled>Antwort prüfen</button><p class="small">${data.isDemo?'Beispielwissen: nicht aus Oskars Unterrichtsmaterial übernommen.':'Die Erklärung zeigt die hinterlegte Quelle.'}</p>`;
  }}
  else html=`<div class="scene-badge">Deine Entdeckung</div><h2 id="journeySceneTitle">Was haben die Fächer gemeinsam?</h2><p>Du hast unterschiedliche Blickwinkel erkundet. Erzähle in einem Satz, warum Mathe und Biologie beide beim Thema Wasser helfen können.</p><label for="journeyReflection">Mein Gedanke</label><textarea id="journeyReflection" rows="4" maxlength="500" placeholder="Zum Beispiel: Mit Mathe kann ich ... und in Biologie verstehe ich ...">${noHtml(journeyState.reflection||'')}</textarea><p class="small">Hier gibt es kein automatisches Richtig oder Falsch. Du kannst deinen Gedanken anschließend gemeinsam besprechen.</p><button type="button" class="btn btn-green journey-action" data-jaction="finish">Entdeckung abschließen</button>`;
+ if(step.type==='video') {
+  html=html.replace('<a href="'+WATER_JOURNEY.videoUrl+'"', '<div class="jmedia-video-grid"><div>'+journeyMediaVideo('simpli-water')+'</div><div>'+journeyMediaVideo('nasa-cycle')+'</div></div><a href="'+WATER_JOURNEY.videoUrl+'"');
+ } else {
+  const imageKey=step.subject?journeyMediaKey(step.name,step.subject):step.type==='reflection'?'earth':'water';
+  html=journeyMediaImage(imageKey,step.type==='quiz'?'Dein '+subject(step.subject).name+'-Labor':step.type==='reflection'?'Deine große Entdeckung':'Dein Abenteuer beginnt')+html;
+ }
  scene.innerHTML=html;
  $('journeyOverlay').classList.add('show');document.body.style.overflow='hidden';
 }
-function closeJourney(){$('journeyOverlay').classList.remove('show');document.body.style.overflow='';}
+function closeJourney(){$('journeySceneBody').replaceChildren();$('journeyOverlay').classList.remove('show');document.body.style.overflow='';}
 function onJourneyAction(e){
  const choice=e.target.closest('[data-janswer]');if(choice){const scene=$('journeySceneBody');scene.dataset.answer=choice.dataset.janswer;scene.querySelectorAll('[data-janswer]').forEach(b=>b.classList.toggle('active',b===choice));scene.querySelector('[data-jaction="check"]').disabled=false;return;}
  const action=e.target.closest('[data-jaction]');if(!action)return;const stepId=$('journeySceneBody').dataset.step;
