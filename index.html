@@ -46,7 +46,7 @@ Viertelnote = 1 Schlag"></textarea></div>
    <div class="manual-card"><h3 style="font-size:16px">Eigene Wissenskarte ergänzen</h3><div class="manual-grid"><div class="field"><label for="manualTerm">Begriff</label><input id="manualTerm" type="text" maxlength="90" placeholder="z. B. Violinschlüssel"></div><div class="field"><label for="manualDefinition">Erklärung</label><input id="manualDefinition" type="text" maxlength="320" placeholder="z. B. ordnet Noten bestimmte Tonhöhen zu"></div></div><button class="btn btn-light" id="addManualCard">Karte als Entwurf hinzufügen</button></div>
   </div>
   <div id="parentReview" hidden><div class="hint"><strong>Qualitätskontrolle:</strong> Entwürfe sind noch nicht in Oskars Quiz. Lies Begriff und Erklärung durch, korrigiere sie und gib sie erst danach frei. Für eine Multiple-Choice-Runde braucht ein Fach mindestens zwei unterschiedliche freigegebene Karten.</div><p class="small" style="margin-top:14px"><strong id="cardCount">0 zu prüfen</strong></p><div id="cardsList"></div><h3 style="margin-top:24px">KI-Aufgaben für das Quiz</h3><p class="small">Jede Frage vor der Freigabe mit ihrem Textbeleg vergleichen.</p><p id="taskCount" class="small"></p><div id="aiTaskList"></div></div>
-  <div id="parentAbout" hidden><h3>Material → Wissen → Training</h3><p class="small">PDF-Text wird lokal ausgelesen; Bilder werden per Texterkennung im Browser verarbeitet. Dafür lädt der Browser externe Open-Source-Bibliotheken und Sprachmodelle. Die App überträgt dabei keine Inhalte an einen eigenen Server. Lokal erzeugte Karten kommen nur aus erkannten Begriff-Erklärung-Paaren. Über einen optionalen geschützten KI-Dienst sind zusätzliche Vorschläge möglich, die an dessen Anbieter übertragen und ebenfalls geprüft werden müssen. Prüfe OCR-Fehler und Fachinhalte vor der Freigabe.</p><h3>Datenschutz & Grenzen</h3><p class="small">GitHub Pages ist öffentlich, aber Schulunterlagen, Entwürfe und Ergebnisse bleiben im lokalen Browser-Speicher. Dieser Browser kann von anderen Personen auf demselben Gerät eingesehen werden. Die Materialbibliothek ist nicht durch Anmeldung geschützt. Keine Daten werden geräteübergreifend synchronisiert. Original-Dateien werden nicht im Git-Repository gespeichert.</p><h3>Daten sichern / auf ein weiteres Gerät übertragen</h3><div class="backup-controls"><button id="exportBackup" class="btn btn-outline btn-mini">JSON-Backup exportieren</button><label>Backup wiederherstellen <input id="importBackup" type="file" accept="application/json,.json"></label></div><p class="small">Die Backup-Datei enthält Lernstoff und Fortschritte. Bitte nicht öffentlich teilen.</p><h3>Spätere Ausbaustufe</h3><p class="small">Der KI-Dienst kann über GitHub Actions nach dem Hinterlegen der Zugangsdaten bereitgestellt werden. Foto-/PDF-Qualitätsprüfung und echte geräteübergreifende Synchronisation fehlen.</p></div>
+  <div id="parentAbout" hidden><h3>Material → Wissen → Training</h3><p class="small">PDF-Text wird lokal ausgelesen; Bilder werden per Texterkennung im Browser verarbeitet. Dafür lädt der Browser externe Open-Source-Bibliotheken und Sprachmodelle. Die App überträgt dabei keine Inhalte an einen eigenen Server. Lokal erzeugte Karten kommen nur aus erkannten Begriff-Erklärung-Paaren. Über einen optionalen geschützten KI-Dienst sind zusätzliche Vorschläge möglich, die an dessen Anbieter übertragen und ebenfalls geprüft werden müssen. Prüfe OCR-Fehler und Fachinhalte vor der Freigabe.</p><h3>Datenschutz & Grenzen</h3><p class="small">GitHub Pages ist öffentlich, aber Schulunterlagen, Entwürfe und Ergebnisse bleiben im lokalen Browser-Speicher. Dieser Browser kann von anderen Personen auf demselben Gerät eingesehen werden. Die Materialbibliothek ist nicht durch Anmeldung geschützt. Keine Daten werden geräteübergreifend synchronisiert. Original-Dateien werden nicht im Git-Repository gespeichert.</p><h3>Daten sichern / auf ein weiteres Gerät übertragen</h3><div class="backup-controls"><button id="exportBackup" class="btn btn-outline btn-mini">JSON-Backup exportieren</button><label>Backup wiederherstellen <input id="importBackup" type="file" accept="application/json,.json"></label></div><p class="small">Die Backup-Datei enthält auch Noten, Arbeiten, Lernanalysen und Fortschritte. Bewahre sie privat auf.</p><h3>Spätere Ausbaustufe</h3><p class="small">Der KI-Dienst kann über GitHub Actions nach dem Hinterlegen der Zugangsdaten bereitgestellt werden. Foto-/PDF-Qualitätsprüfung und echte geräteübergreifende Synchronisation fehlen.</p></div>
  </div></section></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div><section class="print-area" id="printArea" aria-label="Druckansicht"></section>
 <script>
@@ -205,7 +205,7 @@ async function handleMaterialFile(e){
   }catch(err){$('importStatus').textContent=err.message||'Import fehlgeschlagen';toast('Datei nicht lesbar.');}
 }
 function exportData(){
-  const data=JSON.stringify({version:1,exported:new Date().toISOString(),progress:store,cards},null,2);
+  const data=JSON.stringify({version:1,exported:new Date().toISOString(),progress:store,cards,assessments:typeof oskarExportAssessments==='function'?oskarExportAssessments():[]},null,2);
   const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
   const link=document.createElement('a');link.href=url;link.download='oskar-lernpfad-backup-'+new Date().toISOString().slice(0,10)+'.json';link.click();
   setTimeout(()=>URL.revokeObjectURL(url),6000);
@@ -216,10 +216,11 @@ async function importData(e){
   try{
     const obj=JSON.parse(await f.text());
     if(obj.version!==1||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw new Error('Ungültiges Lernpfad-Backup');
-    if(!confirm('Vorhandene lokale Materialien, Wissenskarten und Fortschritte durch das Backup ersetzen?'))return;
+    if(!confirm('Vorhandene lokale Materialien, Wissenskarten, Noten/Arbeiten und Fortschritte durch das Backup ersetzen?'))return;
     const clean=(a)=>a.filter(x=>x&&typeof x==='object');
     store={xp:Number(obj.progress.xp)||0,completed:Array.isArray(obj.progress.completed)?obj.progress.completed:[],errors:Array.isArray(obj.progress.errors)?obj.progress.errors:[],days:Array.isArray(obj.progress.days)?obj.progress.days:[],materials:clean(obj.progress.materials).filter(x=>subject(x.subject)&&typeof x.text==='string').slice(0,100)};
     cards=clean(obj.cards).filter(x=>subject(x.subject)&&typeof x.term==='string'&&typeof x.definition==='string'&&['draft','approved'].includes(x.status)).slice(0,500);
+    if(typeof oskarImportAssessments==='function')oskarImportAssessments(obj.assessments);
     persist();persistCards();render();toast('Backup wiederhergestellt.');
   }catch(err){toast('Backup konnte nicht geladen werden: '+(err.message||'Datei ungültig'));}
   finally{$('importBackup').value='';}
@@ -299,5 +300,7 @@ $('subjects').addEventListener('click',e=>{const b=e.target.closest('[data-subje
 <script src="journeys-v05.js" defer></script>
 <script src="journey-generator-v06.js" defer></script>
 <script src="connections-v07.js" defer></script>
+<script src="assessment-core-v08.js" defer></script>
+<script src="assessment-v08.js" defer></script>
 </body>
 </html>
