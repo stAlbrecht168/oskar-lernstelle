@@ -1,4 +1,4 @@
-name: Deploy Oskars Lernstelle to GitHub Pages
+name: Lernstelle veröffentlichen
 on:
   push:
     branches: [main]
@@ -19,8 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Statische Dateien vorbereiten
+        run: |
+          mkdir -p public
+          cp index.html study-v04.js .nojekyll public/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: public
       - id: deployment
         uses: actions/deploy-pages@v4
