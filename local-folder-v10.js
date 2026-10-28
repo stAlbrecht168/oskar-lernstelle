@@ -17,7 +17,7 @@ const isReady=()=>!!directory;
 const hasFolderApi=()=>typeof window.showDirectoryPicker==='function';
 function setStatus(message,state='info'){
  status.textContent=message;status.dataset.state=state;
- button.textContent=directory?'Anderen Ordner auswählen':savedHandle?'Ordner wieder verbinden':'Lokalen Ordner auswählen';
+ button.textContent=directory?'Anderes Repository auswählen':savedHandle?'Repository wieder verbinden':'Lokales Repository auswählen';
  $('materialFile').disabled=!isReady();
  if($('saveMaterial'))$('saveMaterial').disabled=!isReady();
 }
@@ -116,7 +116,9 @@ async function connect(handle){
  if(!handle||handle.kind!=='directory')throw Error('Es wurde kein Ordner ausgewählt.');
  // Read existing files before changing the active source to avoid partial migrations.
  const previous=directory,wasActive=activated;
- directory=handle;
+ // Der ausgewählte Ordner ist das geklonte Repository.
+ // Alle persönlichen Dateien bleiben ausschließlich in local-data/, das Git ignoriert.
+ directory=await handle.getDirectoryHandle('local-data',{create:true});
  try{
    const existingM=await readJson(FS_FILES.materials),existingC=await readJson(FS_FILES.cards),
          existingT=await readJson(FS_FILES.tasks),existingP=await readJson(FS_FILES.progress);
@@ -141,7 +143,7 @@ async function connect(handle){
    for(const key of [KEY,CARD_KEY,TASK_KEY])localStorage.removeItem(key);
    savedHandle=handle;
    try{await handleDb('put',handle);}catch{}
-   setStatus('Speicherort: '+handle.name+'. Dateien, Aufgabensätze und Lernstand liegen jetzt im lokalen Ordner.','ready');
+   setStatus('Speicherort: '+handle.name+'/local-data. Schulmaterial, Aufgaben und Lernstand werden lokal gespeichert und nicht ins Git-Repository übertragen.','ready');
    render();if(typeof displayAutoHistory==='function')displayAutoHistory();
    if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
    if(typeof renderJourneySources==='function')renderJourneySources();
@@ -159,15 +161,15 @@ button.addEventListener('click',async()=>{
    }
    if(!handle)handle=await window.showDirectoryPicker({id:'oskar-lernstelle',mode:'readwrite',startIn:'documents'});
    if(!handle)return;
-   if(directory&&handle.name!==directory.name&&!confirm('Anderen Ordner öffnen? Der Inhalt dieses Ordners ersetzt die aktuelle Materialansicht.'))return;
-   setStatus('Lokalen Ordner wird geöffnet ...');
+   if(directory&&savedHandle&&!(await handle.isSameEntry(savedHandle))&&!confirm('Anderes Repository wählen? Der Inhalt aus dessen local-data-Ordner ersetzt die aktuelle Materialansicht.'))return;
+   setStatus('Lokaler Speicherordner wird geöffnet ...');
    await connect(handle);
  }catch(e){if(e.name==='AbortError')return;setStatus('Ordner nicht verbunden: '+e.message,'error');}
 });
 const firstField=$('parentMaterials')?.querySelector('.field');
 if(firstField)firstField.before(host);
 window.oskarLocal={isReady,saveOriginal,removeOriginal,flush,connect};
-setStatus(hasFolderApi()?'Einmal einen lokalen Ordner auf deinem Computer auswählen. Schuldateien werden nicht im Browser gespeichert.':'Lokaler Ordnerzugriff benötigt Chrome oder Edge auf dem Computer.');
+setStatus(hasFolderApi()?'Wähle einmal deinen geklonten Ordner oskar-lernstelle. Die App erstellt darin local-data und speichert dort Schuldateien und KI-Aufgaben.':'Lokaler Ordnerzugriff benötigt Chrome oder Edge auf dem Computer.');
 if(hasFolderApi()){
  handleDb('get').then(async handle=>{
    if(!handle||directory)return;
