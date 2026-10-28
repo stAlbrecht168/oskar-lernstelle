@@ -10,7 +10,7 @@ Die Lernstelle läuft auf GitHub Pages. Die KI-Anbindung nutzt einen separaten C
 4. Öffne [Actions > KI-Dienst bereitstellen](https://github.com/stAlbrecht168/oskar-lernstelle/actions/workflows/deploy-worker.yml) und starte `Run workflow`. Der Workflow testet den Worker, deployt ihn und setzt die OpenAI- und Zugriffsschlüssel als private Worker Secrets.
 5. Übernimm die `.workers.dev`-Adresse aus dem Workflow-Protokoll. Trage sie in der **Materialbibliothek** der Lernstelle in das HTTPS-Feld ein. Dort gibt es einen Button **Verbindung prüfen**. Den privaten Zugriffscode eingeben, bevor du auf **KI-Vorschläge** bei einer Materialquelle klickst.
 
-Es gibt **keinen automatischen Cloudflare-Deploy**, solange die vier Zugangsdaten fehlen. Die GitHub Page ist ohne den Worker weiterhin mit lokalem Kartenmodus verwendbar.
+Ohne die vier Zugangsdaten findet keine Cloudflare-Bereitstellung statt. Die GitHub Page ist ohne den Worker weiterhin mit lokalem Kartenmodus verwendbar.
 
 ## Datenschutz und Grenzen
 
@@ -36,3 +36,25 @@ npx wrangler secret put ACCESS_TOKEN
 ```
 
 Der Worker antwortet an `/health` mit `ok:true` und `configured:true`, wenn beide Secrets vorhanden sind. Diese Diagnose verrät keine geheimen Werte.
+
+## Fachübergreifende Journey-Generierung
+
+Der neue Endpunkt `POST /journey` verwendet dieselbe Bearer-Authentifizierung wie `POST /generate`.
+
+Beispiel für den Body (ohne Schulmaterial in GitHub ablegen):
+
+```json
+{
+  "topic": "Wasser und Pflanzen",
+  "sources": [
+    {"id": "mat-1", "subject": "math", "title": "Maßeinheiten", "text": "... mindestens 40 Zeichen echter Unterrichtstext ..."},
+    {"id": "bio-1", "subject": "biology", "title": "Pflanzen", "text": "... mindestens 40 Zeichen echter Unterrichtstext ..."}
+  ]
+}
+```
+
+Das Beispiel zeigt nur das Datenformat und ist kein gültiger produktiver Aufruf. Zulässig sind zwei bis vier Quellen aus mindestens zwei Fächern, 40 bis 6500 Zeichen je Quelle, zusammen höchstens 15.000 Zeichen. Die Antwort enthält unter `journey` eine Leitfrage, einen Einstieg, eine erläuterte Fächerbrücke, zwei bis vier Stationen, eine offene Reflexion und je Station `sourceId`, `subject`, `evidence`, `question`, `options`, `correctIndex` und `explanation`. `reviewRequired` ist `true`, `videosAnalyzed` ist `false`.
+
+Der Worker verwirft unvollständige Stationen, fehlende oder nicht wörtlich enthaltene Belege, falsche Fach-IDs und Reisen mit weniger als zwei belegten Fächern. Die HTTP-Antwort ist in diesem Fall `422`. Keine Vorschläge werden automatisch veröffentlicht. Video-Links werden ausschließlich im Frontend aus einer kleinen, redaktionell ausgewählten Liste ergänzt und müssen aktiv freigegeben werden. Der Worker ruft keine Videotranskripte ab.
+
+Aktuelle Einschränkungen: keine Registrierung einzelner Nutzer, keine serverseitige Speicherung von Lernreisen, keine automatische Videorecherche, keine Inhaltsbewertung der Videos, kein Rate Limiting und kein Live-Test mit echten privaten API-Zugangsdaten. Für eine öffentliche Mehrnutzer-App wäre eine richtige Authentifizierung mit nutzerbezogenen Quoten erforderlich.
