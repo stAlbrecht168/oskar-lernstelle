@@ -58,3 +58,9 @@ Das Beispiel zeigt nur das Datenformat und ist kein gültiger produktiver Aufruf
 Der Worker verwirft unvollständige Stationen, fehlende oder nicht wörtlich enthaltene Belege, falsche Fach-IDs und Reisen mit weniger als zwei belegten Fächern. Die HTTP-Antwort ist in diesem Fall `422`. Keine Vorschläge werden automatisch veröffentlicht. Video-Links werden ausschließlich im Frontend aus einer kleinen, redaktionell ausgewählten Liste ergänzt und müssen aktiv freigegeben werden. Der Worker ruft keine Videotranskripte ab.
 
 Aktuelle Einschränkungen: keine Registrierung einzelner Nutzer, keine serverseitige Speicherung von Lernreisen, keine automatische Videorecherche, keine Inhaltsbewertung der Videos, kein Rate Limiting und kein Live-Test mit echten privaten API-Zugangsdaten. Für eine öffentliche Mehrnutzer-App wäre eine richtige Authentifizierung mit nutzerbezogenen Quoten erforderlich.
+## Automatische Verbindungen zwischen Schulfächern
+
+Der Endpunkt `POST /connections` untersucht zwei bis vier Schulquellen aus mindestens zwei Fächern gemeinsam. Die Anfrage nutzt dieselbe Authentifizierung wie `/generate` und `/journey` und erfordert den privaten `ACCESS_TOKEN`. Die Antwort enthält bis zu drei Vorschläge mit fachlicher Verbindung, Transferidee, offener Frage und wörtlichen Quellenbelegen. Wenn kein seriöser Zusammenhang erkennbar ist, liefert der Worker eine leere Liste.
+
+Die Lern-App startet die Analyse automatisch nach dem Speichern von Material, sobald zwei geeignete Fächer und die Verbindung in der aktuellen Browsersitzung vorhanden sind. Sie prüft die Belege erneut im Browser und speichert Ergebnisse lokal, um identische KI-Aufrufe zu vermeiden. Keine Verbindung wird als bewiesenes Wissen oder automatisch freigegebene Quizantwort dargestellt.
+
