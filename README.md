@@ -54,8 +54,15 @@ Dann `http://localhost:8000` öffnen. Für den Worker: `cd worker && npm test`.
 - Die Materialbibliothek zeigt mögliche Verbindungen über gemeinsame Themen und fachspezifische Stichwörter. Für jede Verbindung müssen Quellen aus mindestens zwei Fächern vorhanden sein. Die Textbelege werden angezeigt und sollen inhaltlich geprüft werden.
 - Ein gemeinsamer Übungsmix startet erst, wenn zwei passende, freigegebene Fragen vorhanden sind. Keine unbelegten Behauptungen über Lerntransfer.
 - Fortschritt und freie Abschlussreflexion werden lokal gespeichert und ab jetzt zusammen mit anderen Lernständen exportiert.
-- Die Erzeugung vollständig neuer Journeys durch KI ist noch eine geplante Erweiterung. Der vorhandene Worker erstellt KI-Karten und Quizfragen aus jeweils einem Fachtext, nicht aus einem Video.
+- Seit Version 0.6 kann der Worker zusätzlich belegbasierte, fachübergreifende Reisen aus zwei bis vier Schulquellen vorschlagen. Ein Erwachsener prüft und gibt sie frei. Video-Inhalte werden nicht als Quellenbeleg für Aufgaben verwendet.
 
 Entwurfsentscheidung: [ADR 0002](docs/adr/0002-fachuebergreifende-entdeckerreisen.md). Browser-Smoketest: `python tests/browser-journeys.py` mit installierten Paketen Playwright, BeautifulSoup und Chromium.
 
 Die Testdatei verwendet ausschließlich erfundene Beispieldaten. Private Schulunterlagen gehören nicht ins Repository.
+## Visuelle Entdeckerreisen, Version 0.7
+
+Die Wasserreise bietet jetzt große Bilder, bildhafte Stationen und zwei Video-Vorschauen: „Das üble Geschäft mit Wasser“ (Simplicissimus) und eine englische NASA-Animation zum Wasserkreislauf. Ein Video wird erst nach einem bewussten Klick auf „Video abspielen“ über YouTube eingebettet; der Video-Stopp kann weiterhin übersprungen werden. Das Simplicissimus-Video bitte vorher gemeinsam auf Altersangemessenheit prüfen.
+
+Auch freigegebene KI-Reisen zeigen ein Titelbild und Stationsbilder, die automatisch aus einem kleinen, lizenzierten Bildkatalog passend zum Thema beziehungsweise Fach ausgewählt werden. Die Bilder illustrieren den Lernstoff, belegen aber keine inhaltlichen Aussagen. Quellen und Lizenzen sind direkt am Bild verlinkt. Die Bilder benötigen eine Internetverbindung; bei Verbindungsproblemen bleibt eine farbige Fallbackfläche bestehen.
+
+**Technik:** `journey-media-v07.js` muss neben `index.html`, `journeys-v05.js` und `journey-generator-v06.js` veröffentlicht werden. Die GitHub-Pages-Action übernimmt das. Details: [ADR 0004](docs/adr/0004-visuelle-entdeckerreisen.md). Browser-Test: `python tests/browser-journeys.py`.
