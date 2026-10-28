@@ -84,8 +84,8 @@
   function sourceHint(id) {
     if (typeof hasSources === 'function' && hasSources(id)) {
       return typeof realQuestions === 'function' && realQuestions(id).length
-        ? 'Mit freigegebenen Aufgaben aus deinem Schulstoff'
-        : 'Schulstoff vorhanden – bitte zuerst Aufgaben freigeben';
+        ? 'Mit Übungen aus deinem hochgeladenen Schulmaterial'
+        : 'Schulstoff vorhanden. KI-Aufgaben werden vorbereitet oder benötigen eine Verbindung.';
     }
     return 'Derzeit nur Demoaufgaben – Schulmaterial ergänzen';
   }
@@ -93,11 +93,6 @@
 
   var style = document.createElement('style');
   style.textContent = [
-    '.plan-teaser{padding:19px 22px}.plan-top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}',
-    '.plan-kicker{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#6773c9;font-weight:900}',
-    '.plan-top h2{margin:3px 0 4px;font-size:19px}.plan-description{margin:0;color:#66748e;font-size:13px}',
-    '.plan-status{display:inline-block;border-radius:20px;background:#e8f8ed;color:#147a58;padding:5px 10px;font-weight:800;font-size:12px}',
-    '.plan-status.pending{background:#f0f2fb;color:#5967a1}.plan-sub{font-size:12px;color:#7885a0;margin:9px 0 0}',
     '.plan-short-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:14px}.plan-short-actions .btn{padding:10px 14px;font-size:12px}',
     '.plan-dialog{max-width:760px}.plan-tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}',
     '.plan-tabs button{border:0;background:#eff2fa;color:#5c6686;border-radius:11px;padding:10px 13px;font-weight:800;font-size:12px}',
@@ -117,14 +112,7 @@
   ].join('\n');
   document.head.appendChild(style);
 
-  var hero = $('heroBtn').closest('.hero');
-  hero.insertAdjacentHTML('afterend',
-    '<section class="panel plan-teaser" id="planTeaser" aria-label="Deine Tagesmission">' +
-    '<div class="plan-top"><div><div class="plan-kicker">Dein Lernrhythmus</div><h2>Deine Tagesmission</h2>' +
-    '<p class="plan-description" id="planTeaserText"></p></div><span class="plan-status pending" id="planTeaserStatus"></span></div>' +
-    '<p class="plan-sub" id="planTeaserSource"></p><div class="plan-short-actions">' +
-    '<button type="button" class="btn btn-green" id="planStart">Jetzt üben</button>' +
-    '<button type="button" class="btn btn-light" id="planOpen">Lernplan & Tracking</button></div></section>');
+  // Die Hauptkarte ist die einzige Tagesmission. Kein zweites Panel unter dem Hero.
   document.body.insertAdjacentHTML('beforeend',
     '<div class="overlay" id="plannerOverlay" role="presentation"><section class="dialog plan-dialog" role="dialog" aria-modal="true" aria-labelledby="plannerHeading">' +
     '<div class="dialog-head"><div class="title" id="plannerHeading">Lernplan bis zur Klassenarbeit</div>' +
@@ -194,7 +182,7 @@
     closePlanner();
     chooseSubject(e.id);
     if (typeof hasSources === 'function' && hasSources(e.id) && !realQuestions(e.id).length) {
-      toast('Bitte zuerst Schulstoff-Aufgaben freigeben.');
+      toast('Aus dieser Quelle fehlen noch Lernaufgaben. Bitte prüfe den Upload-Status.');
       if (typeof openMaterials === 'function') openMaterials();
       else openParent();
       return;
@@ -261,14 +249,21 @@
   }
   function renderPlanner() {
     var today=todayKey(), plan=planOn(today), done=learned(today), e=plan.exam;
-    $('planTeaserText').textContent = plan.phase.duration
-      ? e.icon+' '+e.name+' · '+plan.phase.title+' · etwa '+plan.phase.duration+' Minuten'
-      : e.icon+' '+e.name+' · '+plan.phase.title;
-    $('planTeaserStatus').textContent=done?'Heute gelernt ✓':plan.phase.duration?'Heute noch offen':'Heute Klausur';
-    $('planTeaserStatus').classList.toggle('pending',!done);
-    $('planTeaserSource').textContent=plan.phase.duration ? sourceHint(e.id) : 'Die Klausur ersetzt heute die tägliche Lernmission.';
-    $('planStart').textContent=done?'Noch eine Runde üben':'Tagesmission starten';
-    $('planStart').disabled=!plan.phase.duration;
+    var examInfo=plan.days===null || !e.date ? 'Kein fester Klassenarbeitstermin' :
+      plan.days===0 ? 'Heute Klassenarbeit' :
+      'Klassenarbeit in '+plan.days+(plan.days===1?' Tag':' Tagen');
+    var source=plan.phase.duration ? sourceHint(e.id) : 'Heute steht die Klassenarbeit im Mittelpunkt.';
+    var ready=typeof hasSources === 'function' && hasSources(e.id) && typeof realQuestions === 'function' && realQuestions(e.id).length===0;
+    $('heroMeta').textContent='Deine Tagesmission · '+examInfo;
+    $('heroTitle').textContent=e.icon+' '+e.name+': '+plan.phase.title;
+    $('heroDesc').textContent=plan.phase.duration ?
+      'Etwa '+plan.phase.duration+' Minuten. '+plan.phase.detail :
+      plan.phase.detail;
+    $('heroSource').textContent=source;
+    $('heroDailyStatus').textContent=done?'Heute gelernt ✓':plan.phase.duration?'Heute noch offen':'Klassenarbeit';
+    $('heroDailyStatus').classList.toggle('is-done',done);
+    $('heroBtn').textContent=plan.phase.duration ? (ready?'Material prüfen':done?'Noch eine Runde üben':'Tagesmission starten') : 'Zum Lernplan';
+    $('heroBtn').disabled=false;
     renderPlannerDialog();
   }
   function saveDates() {
@@ -283,7 +278,12 @@
     render();
     toast('Klausurtermine und Lernplan aktualisiert.');
   }
-  $('planStart').addEventListener('click',startPlanned);
+  // Der alte Hero-Handler wird im Capture-Phase abgefangen, damit beide
+  // Einstiege nicht unterschiedliche Lektionen starten.
+  $('heroBtn').addEventListener('click',function(event){
+    event.stopImmediatePropagation();
+    startPlanned();
+  },true);
   $('planOpen').addEventListener('click',function(){openPlanner('plan');});
   function syncPlannerHash() {
     if (location.hash === '#lernplan') openPlanner('plan');
