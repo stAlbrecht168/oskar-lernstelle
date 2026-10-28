@@ -14,7 +14,7 @@ function setAutoStatus(message,kind='working'){
 }
 function displayAutoHistory(){
  if(!uploadHistory.isConnected)return;
- const list=store.materials.slice(-5).reverse();
+ const list=store.materials.slice(-3).reverse();
  uploadHistory.innerHTML=list.length?'<h3>Bereits hinzugefügt</h3>'+list.map(m=>'<div class="auto-source"><span><strong>'+noHtml(m.title||'Schulmaterial')+'</strong><small>'+noHtml(subject(m.subject)?.name||m.subject)+'</small></span><span class="auto-state">'+noHtml(recentMaterialText(m))+'</span></div>').join(''):'';
 }
 function setupSimplifiedMaterials(){
@@ -27,6 +27,8 @@ function setupSimplifiedMaterials(){
  details.id='materialAdvanced';
  details.innerHTML='<summary>Weitere Einstellungen und Korrekturen</summary><div class="auto-advanced-body"></div>';
  const inner=details.querySelector('.auto-advanced-body');
+ const materialSummary=content.querySelector('.material-summary');
+ if(materialSummary)inner.appendChild(materialSummary);
  const extras=[...materials.children].filter(x=>x!==subjectField&&x!==fileField);
  for(const el of extras)inner.appendChild(el);
  materials.append(subjectField,fileField,uploadStatus,uploadHistory,details);
@@ -101,7 +103,7 @@ async function analyzeUploadedMaterial(m){
   let result;try{result=await resp.json();}catch{throw Error('Ungültige Antwort des KI-Dienstes.');}
   if(!resp.ok)throw Error(result.error||'KI-Dienst meldet Fehler '+resp.status);
   const tasks=vettedTasks(result.tasks,m),newCards=vettedCards(result.cards,m);
-  if(!tasks.length&&!newCards.length)throw Error('Aus dieser Datei konnte die KI keine belegbaren Lerninhalte erzeugen. Bitte ein deutlicheres PDF oder Foto verwenden.');
+  if(!tasks.length&&newCards.length<2)throw Error('Die Datei enthält zu wenig eindeutige Aussagen für ein Quiz. Bitte eine zusätzliche oder besser lesbare Seite hochladen.');
   aiTasks=aiTasks.filter(t=>t.sourceId!==m.id).concat(tasks);
   cards=cards.filter(c=>c.sourceId!==m.id).concat(newCards);
   if(!saveTasks()||!persistCards())throw Error('Der lokale Browser-Speicher ist voll.');
