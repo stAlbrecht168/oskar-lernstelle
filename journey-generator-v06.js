@@ -75,7 +75,7 @@ function renderGeneratedJourneys(){
  const items=journeyDraftItems();
  const pending=items.filter(j=>j.status==='draft');const approved=items.filter(j=>j.status==='approved');
  $('journeyPending').innerHTML=pending.length?`<h3>Reisen zur Prüfung</h3>`+pending.map(j=>renderJourneyDraft(j)).join(''):'';
- $('journeyApproved').innerHTML=`<h3>Deine Reisen</h3>`+(approved.length?approved.map(j=>{const ok=journeyValid(j);const progress=journeyProgress()[j.id]||{};return `<article class="ai-journey-tile"><div><strong>${noHtml(j.title)}</strong><p>${noHtml(j.guidingQuestion)}</p><small>${[...new Set(j.stations.map(s=>subject(s.subject)?.name||s.subject))].map(noHtml).join(' · ')}${videoForJourney(j)?' · 🎬 Video':''}</small>${!ok?'<p class="journey-warning">Quellen fehlen oder wurden geändert. Diese Reise ist derzeit gesperrt.</p>':''}</div><div class="journey-tile-actions"><button type="button" data-jrun="${noHtml(j.id)}" class="btn btn-green btn-mini" ${!ok?'disabled':''}>${progress.completed?'Wiederholen':progress.step?'Fortsetzen':'Entdecken'}</button><button type="button" data-jedit="${noHtml(j.id)}" class="btn btn-outline btn-mini">Bearbeiten</button><button type="button" data-jdelete="${noHtml(j.id)}" class="btn btn-outline btn-mini">Löschen</button></div></article>`;}).join(''):'<p class="bridge-empty">Hier erscheinen die geprüften, freigegebenen Reisen. Die Wasserreise darüber ist weiterhin als Beispiel verfügbar.</p>');
+ $('journeyApproved').innerHTML=`<h3>Deine Reisen</h3>`+(approved.length?approved.map(j=>{const ok=journeyValid(j);const progress=journeyProgress()[j.id]||{};return `<article class="ai-journey-tile jmedia-tile">${journeyMediaThumb(journeyMediaKey([j.title,j.guidingQuestion].join(' ')))}<div class="jmedia-tile-body"><strong>${noHtml(j.title)}</strong><p>${noHtml(j.guidingQuestion)}</p><small>${[...new Set(j.stations.map(s=>subject(s.subject)?.name||s.subject))].map(noHtml).join(' · ')}${videoForJourney(j)?' · 🎬 Video':''}</small>${!ok?'<p class="journey-warning">Quellen fehlen oder wurden geändert. Diese Reise ist derzeit gesperrt.</p>':''}</div><div class="journey-tile-actions"><button type="button" data-jrun="${noHtml(j.id)}" class="btn btn-green btn-mini" ${!ok?'disabled':''}>${progress.completed?'Wiederholen':progress.step?'Fortsetzen':'Entdecken'}</button><button type="button" data-jedit="${noHtml(j.id)}" class="btn btn-outline btn-mini">Bearbeiten</button><button type="button" data-jdelete="${noHtml(j.id)}" class="btn btn-outline btn-mini">Löschen</button></div></article>`;}).join(''):'<p class="bridge-empty">Hier erscheinen die geprüften, freigegebenen Reisen. Die Wasserreise darüber ist weiterhin als Beispiel verfügbar.</p>');
 }
 function renderJourneyDraft(j){
  const candidate=videoCandidate(j),video=candidate&&JOURNEY_VIDEOS[candidate],ok=journeyValid(j);
@@ -124,7 +124,7 @@ function handleJourneyList(e){const b=e.target.closest('[data-jrun],[data-jedit]
  if(!confirm('Diese Reise und ihren Fortschritt löschen?'))return;
  journeyState.aiJourneys=journeyDraftItems().filter(x=>x.id!==id);delete journeyProgress()[id];saveAiJourney();
 }
-function closeAiJourney(){journeyOpened=null;$('aiJourneyOverlay').classList.remove('show');document.body.style.overflow='';}
+function closeAiJourney(){journeyOpened=null;$('aiJourneyScene').replaceChildren();$('aiJourneyOverlay').classList.remove('show');document.body.style.overflow='';}
 function aiJourneySteps(j){return [{type:'intro'},...(videoForJourney(j)?[{type:'video'}]:[]),...j.stations.map((s,i)=>({type:'quiz',index:i})),{type:'reflection'}];}
 function openAiJourney(id){const j=journeyDraftItems().find(x=>x.id===id&&x.status==='approved');if(!j||!journeyValid(j)){toast('Die Quellen dieser Reise sind nicht mehr gültig.');return;}
  journeyOpened=id;$('aiJourneyOverlay').classList.add('show');document.body.style.overflow='hidden';renderAiJourneyScene();
@@ -141,6 +141,13 @@ function renderAiJourneyScene(){const j=journeyDraftItems().find(x=>x.id===journ
  html+=`<div class="scene-badge">${noHtml(subject(s.subject).icon)} ${noHtml(subject(s.subject).name)} · Entdeckung ${step.index+1}</div><h2 id="aiJourneyTitle">${noHtml(s.heading)}</h2><p>${noHtml(s.context)}</p><h3>${noHtml(s.question)}</h3><div class="journey-choices">${s.options.map((o,i)=>`<button type="button" data-aichoice="${i}" class="journey-choice"><span>${i+1}</span>${noHtml(o)}</button>`).join('')}</div><div id="aiJourneyFeedback" role="status" aria-live="polite"></div><button type="button" data-aiaction="check" class="btn btn-green" disabled>Antwort prüfen</button><p class="small">Quelle: ${noHtml(m?.title||'Schulmaterial')}</p>`;
  }
  if(step.type==='reflection')html+=`<div class="scene-badge">Deine Entdeckung</div><h2 id="aiJourneyTitle">Was hast du herausgefunden?</h2><p>${noHtml(j.reflectionPrompt)}</p><textarea id="aiJourneyReflection" rows="4" maxlength="500" placeholder="Dein Gedanke ...">${noHtml(progress.reflection||'')}</textarea><p class="small">Deine Antwort wird nicht automatisch benotet. Sprich mit jemandem darüber, wenn du magst.</p><button type="button" data-aiaction="finish" class="btn btn-green">Reise abschließen</button>`;
+ if(step.type==='video') {
+  html=html.replace('<div class="scene-badge">',journeyMediaVideo(j.videoId)+'<div class="scene-badge">');
+ } else {
+  const imageKey=step.type==='quiz'?journeyMediaKey(j.title,j.stations[step.index].subject):step.type==='reflection'?journeyMediaKey(j.title):journeyMediaKey([j.title,j.guidingQuestion,j.connection].join(' '));
+  const caption=step.type==='quiz'?'Fachstation · '+(subject(j.stations[step.index].subject)?.name||'Entdecken'):step.type==='reflection'?'Deine Entdeckung':'Die Welt hinter deiner Frage';
+  html=html.replace('<div class="scene-badge">',journeyMediaImage(imageKey,caption,step.type==='quiz'?'compact':'scene')+'<div class="scene-badge">');
+ }
  $('aiJourneyScene').innerHTML=html;
 }
 function handleJourneyPlayer(e){const choice=e.target.closest('[data-aichoice]');if(choice){const scene=$('aiJourneyScene');scene.dataset.choice=choice.dataset.aichoice;scene.querySelectorAll('[data-aichoice]').forEach(b=>b.classList.toggle('active',b===choice));scene.querySelector('[data-aiaction="check"]').disabled=false;return;}
