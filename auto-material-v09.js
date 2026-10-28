@@ -7,7 +7,16 @@ const uploadElement=document.querySelector('#materialFile');
 const uploadStatus=document.createElement('div');
 uploadStatus.id='autoMaterialStatus';uploadStatus.setAttribute('role','status');uploadStatus.setAttribute('aria-live','polite');
 const uploadHistory=document.createElement('div');uploadHistory.id='autoMaterialHistory';
-const recentMaterialText=m=>m.analysisState==='ready'?'KI-Übungen bereit':m.analysisState==='processing'?'KI analysiert':m.analysisState==='waiting'?'KI-Verbindung fehlt':m.analysisState==='failed'?'Analyse fehlgeschlagen':'Gespeichert';
+function materialPlayable(m){
+ if(!m)return false;
+ if(aiTasks.some(t=>t.sourceId===m.id&&t.status==='approved'&&Array.isArray(t.options)&&t.options.length>=2))return true;
+ return cards.filter(c=>c.sourceId===m.id&&c.status==='approved').length>=2;
+}
+function materialNeedsAnalysis(m){
+ if(!m||typeof m.text!=='string'||m.text.trim().length<30)return false;
+ return !materialPlayable(m);
+}
+const recentMaterialText=m=>materialPlayable(m)?'Übungen bereit':m.analysisState==='processing'?'KI analysiert':m.analysisState==='waiting'?'KI-Verbindung fehlt':m.analysisState==='failed'?'Analyse fehlgeschlagen':'Gespeichert, noch keine Übungen';
 function setAutoStatus(message,kind='working'){
  uploadStatus.dataset.state=kind;
  uploadStatus.textContent=message;
@@ -59,7 +68,7 @@ function setupSimplifiedMaterials(){
    if(b.dataset.autoAction==='retry')processPendingMaterials();
  });
  displayAutoHistory();
- if(store.materials.some(m=>m.analysisState==='waiting'||(!m.analysisState&&!aiTasks.some(t=>t.sourceId===m.id&&t.generatedByAI))))processPendingMaterials();
+ if(store.materials.some(materialNeedsAnalysis))processPendingMaterials();
 }
 function workerConnection(){
  const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,'');
@@ -91,12 +100,12 @@ function vettedCards(raw,m){
 async function analyzeUploadedMaterial(m){
  const connection=workerConnection();
  if(!connection.ready){
-  m.analysisState='waiting';persist();displayAutoHistory();
+  m.analysisState='waiting';persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
   setAutoStatus('Datei gespeichert. Für die automatische KI-Analyse bitte einmal den privaten Zugriffscode eingeben.','waiting');
   const b=document.createElement('button');b.className='btn btn-outline btn-mini';b.dataset.autoAction='connect';b.textContent='KI-Verbindung einrichten';uploadStatus.appendChild(b);
   return;
  }
- m.analysisState='processing';persist();displayAutoHistory();
+ m.analysisState='processing';persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
  setAutoStatus('Datei gespeichert. Die KI erstellt jetzt Lernkarten und Übungsaufgaben …','working');
  try{
   const resp=await fetch(connection.endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+connection.token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)}),signal:AbortSignal.timeout(45000)});
@@ -113,8 +122,8 @@ async function analyzeUploadedMaterial(m){
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
  }catch(err){
   m.analysisState='failed';m.analysisError=String(err.message||'Unbekannter Fehler').slice(0,180);
-  persist();displayAutoHistory();
-  setAutoStatus('PDF gespeichert, aber die KI-Analyse ist fehlgeschlagen: '+m.analysisError,'failed');
+  persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
+  setAutoStatus('Datei gespeichert, aber die KI-Analyse ist fehlgeschlagen: '+m.analysisError,'failed');
   const b=document.createElement('button');b.className='btn btn-outline btn-mini';b.dataset.autoAction='retry';b.textContent='Analyse erneut versuchen';uploadStatus.appendChild(b);
  }
 }
@@ -124,7 +133,7 @@ async function processPendingMaterials(){
  if(!connection.ready){displayAutoHistory();return;}
  autoAnalysisBusy=true;
  try{
-  const pending=store.materials.filter(m=>m.analysisState==='waiting'||(!m.analysisState&&!aiTasks.some(t=>t.sourceId===m.id&&t.generatedByAI)));
+  const pending=store.materials.filter(materialNeedsAnalysis);
   for(const m of pending){if(!store.materials.includes(m))continue;await analyzeUploadedMaterial(m);}
  }finally{autoAnalysisBusy=false;}
 }
@@ -204,3 +213,77 @@ uploadElement.addEventListener('change',event=>{
   if(file)void ingestSchoolFile(file);
 },true);
 setupSimplifiedMaterials();
+
+/* Musik, Mathe usw. zeigen die wirkliche Materialnutzung direkt im Lernpfad. */
+function initSubjectMaterialStatus(){
+ const learn=$('learn'),progress=learn.querySelector('.path-progress');
+ if(!learn||!progress)return;
+ const line=document.createElement('div');
+ line.id='subjectMaterialStatus';
+ line.className='subject-source-status';
+ line.setAttribute('role','status');
+ line.setAttribute('aria-live','polite');
+ line.hidden=true;
+ progress.insertAdjacentElement('afterend',line);
+ line.addEventListener('click',event=>{
+   const b=event.target.closest('[data-material-action]');if(!b)return;
+   if(b.dataset.materialAction==='connect'){
+     if(typeof openMaterials==='function')openMaterials();
+     else openParent();
+     const details=$('materialAdvanced');if(details)details.open=true;
+     $('aiToken').focus();
+     return;
+   }
+   if(b.dataset.materialAction==='retry'){
+     if(typeof openMaterials==='function')openMaterials();
+     else openParent();
+     processPendingMaterials();
+   }
+ });
+ const originalRenderWithSources=render;
+ render=function(){
+   originalRenderWithSources();
+   renderSubjectMaterialStatus();
+ };
+ renderSubjectMaterialStatus();
+}
+function renderSubjectMaterialStatus(){
+ const line=$('subjectMaterialStatus');if(!line)return;
+ const current=store.materials.filter(m=>m.subject===selected);
+ if(!current.length){line.hidden=true;line.replaceChildren();return;}
+ line.hidden=false;
+ const name=subject(selected)?.name||'Schulfach';
+ const total=realQuestions(selected).length;
+ const waiting=current.some(materialNeedsAnalysis);
+ const analyzing=current.some(m=>m.analysisState==='processing'&&materialNeedsAnalysis(m));
+ const error=current.some(m=>m.analysisState==='failed'&&materialNeedsAnalysis(m));
+ const label=document.createElement('span');
+ label.className='subject-source-label';
+ let description='';
+ let action='';
+ let actionName='';
+ if(total){
+   description=name+': '+current.length+' '+(current.length===1?'Quelle':'Quellen')+' · '+total+' Aufgaben aus deinem Schulstoff';
+   if(waiting){description+=' · weiteres Material wird analysiert';}
+ }else if(analyzing){
+   description=name+': '+current.length+' '+(current.length===1?'Quelle':'Quellen')+' gespeichert. KI erstellt Aufgaben.';
+ }else if(!workerConnection().ready){
+   description=name+': '+current.length+' '+(current.length===1?'Quelle':'Quellen')+' gespeichert. KI-Verbindung fehlt, deshalb siehst du Beispielaufgaben.';
+   action='connect';actionName='KI verbinden';
+ }else if(error){
+   description=name+': '+current.length+' '+(current.length===1?'Quelle':'Quellen')+' gespeichert. KI-Analyse fehlgeschlagen.';
+   action='retry';actionName='Erneut versuchen';
+ }else{
+   description=name+': '+current.length+' '+(current.length===1?'Quelle':'Quellen')+' gespeichert. Noch keine KI-Aufgaben.';
+   action='retry';actionName='Aufgaben erzeugen';
+ }
+ label.textContent=description;
+ line.replaceChildren(label);
+ if(action){
+   const button=document.createElement('button');button.type='button';button.className='btn btn-outline btn-mini';
+   button.dataset.materialAction=action;button.textContent=actionName;
+   line.appendChild(button);
+ }
+}
+
+initSubjectMaterialStatus();
