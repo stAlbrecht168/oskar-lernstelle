@@ -42,10 +42,11 @@ Viertelnote = 1 Schlag"></textarea></div>
    <div class="split-actions"><button class="btn btn-green" id="saveMaterial">Quelle speichern</button></div>
    <h3 style="margin:28px 0 5px;font-size:16px">Meine Quellen <span id="materialCount"></span></h3>
    <p class="small">Nur im Browser dieses Geräts gespeichert. Keine automatische Synchronisierung.</p><div id="materialsList"></div>
+   <div class="manual-card"><h3 style="font-size:16px">Optionale KI-Anbindung</h3><p class="small">Mit einem separat betriebenen, zugangsgeschützten KI-Gateway können auch aus längeren Texten Wissenskarten vorgeschlagen werden. Nur bei „KI-Vorschläge“ wird der Quelltext dorthin gesendet. Die Einrichtung ist noch nicht abgeschlossen; lokal erzeugen funktioniert ohne KI.</p><div class="field"><label for="aiEndpoint">HTTPS-Adresse des privaten KI-Gateways</label><input id="aiEndpoint" type="text" placeholder="https://dein-worker.workers.dev" autocomplete="off"></div><div class="field"><label for="aiToken">Zugriffscode (nicht gespeichert)</label><input id="aiToken" type="password" placeholder="Privater Zugriffscode" autocomplete="off"></div><div id="aiStatus" role="status" aria-live="polite" class="small"></div></div>
    <div class="manual-card"><h3 style="font-size:16px">Eigene Wissenskarte ergänzen</h3><div class="manual-grid"><div class="field"><label for="manualTerm">Begriff</label><input id="manualTerm" type="text" maxlength="90" placeholder="z. B. Violinschlüssel"></div><div class="field"><label for="manualDefinition">Erklärung</label><input id="manualDefinition" type="text" maxlength="320" placeholder="z. B. ordnet Noten bestimmte Tonhöhen zu"></div></div><button class="btn btn-light" id="addManualCard">Karte als Entwurf hinzufügen</button></div>
   </div>
   <div id="parentReview" hidden><div class="hint"><strong>Qualitätskontrolle:</strong> Entwürfe sind noch nicht in Oskars Quiz. Lies Begriff und Erklärung durch, korrigiere sie und gib sie erst danach frei. Für eine Multiple-Choice-Runde braucht ein Fach mindestens zwei unterschiedliche freigegebene Karten.</div><p class="small" style="margin-top:14px"><strong id="cardCount">0 zu prüfen</strong></p><div id="cardsList"></div></div>
-  <div id="parentAbout" hidden><h3>Material → Wissen → Training</h3><p class="small">PDF-Text wird lokal ausgelesen; Bilder werden per Texterkennung im Browser verarbeitet. Dafür lädt der Browser externe Open-Source-Bibliotheken und Sprachmodelle. Die App überträgt dabei keine Inhalte an einen eigenen Server. Automatische Karten kommen nur aus erkannten Begriff-Erklärung-Paaren – keine generative KI. Prüfe OCR-Fehler und Fachinhalte vor der Freigabe.</p><h3>Datenschutz & Grenzen</h3><p class="small">GitHub Pages ist öffentlich, aber Schulunterlagen, Entwürfe und Ergebnisse bleiben im lokalen Browser-Speicher. Dieser Browser kann von anderen Personen auf demselben Gerät eingesehen werden. Der Elternbereich ist nicht durch Anmeldung geschützt. Keine Daten werden geräteübergreifend synchronisiert. Original-Dateien werden nicht im Git-Repository gespeichert.</p><h3>Daten sichern / auf ein weiteres Gerät übertragen</h3><div class="backup-controls"><button id="exportBackup" class="btn btn-outline btn-mini">JSON-Backup exportieren</button><label>Backup wiederherstellen <input id="importBackup" type="file" accept="application/json,.json"></label></div><p class="small">Die Backup-Datei enthält Lernstoff und Fortschritte. Bitte nicht öffentlich teilen.</p><h3>Spätere Ausbaustufe</h3><p class="small">KI-Fragen mit begründeter Quellenbindung, geschützter API, Foto-/PDF-Qualitätsprüfung und echte geräteübergreifende Synchronisation sind noch nicht eingerichtet.</p></div>
+  <div id="parentAbout" hidden><h3>Material → Wissen → Training</h3><p class="small">PDF-Text wird lokal ausgelesen; Bilder werden per Texterkennung im Browser verarbeitet. Dafür lädt der Browser externe Open-Source-Bibliotheken und Sprachmodelle. Die App überträgt dabei keine Inhalte an einen eigenen Server. Lokal erzeugte Karten kommen nur aus erkannten Begriff-Erklärung-Paaren. Über einen optionalen geschützten KI-Dienst sind zusätzliche Vorschläge möglich, die an dessen Anbieter übertragen und ebenfalls geprüft werden müssen. Prüfe OCR-Fehler und Fachinhalte vor der Freigabe.</p><h3>Datenschutz & Grenzen</h3><p class="small">GitHub Pages ist öffentlich, aber Schulunterlagen, Entwürfe und Ergebnisse bleiben im lokalen Browser-Speicher. Dieser Browser kann von anderen Personen auf demselben Gerät eingesehen werden. Der Elternbereich ist nicht durch Anmeldung geschützt. Keine Daten werden geräteübergreifend synchronisiert. Original-Dateien werden nicht im Git-Repository gespeichert.</p><h3>Daten sichern / auf ein weiteres Gerät übertragen</h3><div class="backup-controls"><button id="exportBackup" class="btn btn-outline btn-mini">JSON-Backup exportieren</button><label>Backup wiederherstellen <input id="importBackup" type="file" accept="application/json,.json"></label></div><p class="small">Die Backup-Datei enthält Lernstoff und Fortschritte. Bitte nicht öffentlich teilen.</p><h3>Spätere Ausbaustufe</h3><p class="small">Das KI-Gateway ist als separat bereitzustellender Worker vorbereitet, aber noch nicht konfiguriert oder live. Foto-/PDF-Qualitätsprüfung und echte geräteübergreifende Synchronisation fehlen.</p></div>
  </div></section></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div><section class="print-area" id="printArea" aria-label="Druckansicht"></section>
 <script>
@@ -114,7 +115,7 @@ function renderKnowledge(){
   $('materialCount').textContent='('+store.materials.length+')';
   $('materialsList').innerHTML=store.materials.length ? store.materials.map(m=>{
     const c=cards.filter(x=>x.sourceId===m.id);
-    return `<div class="source source-item"><strong>${subject(m.subject)?.icon||'📄'}</strong><span><b>${noHtml(m.title||'Notiz')}</b><br>${noHtml(m.text.slice(0,110))}${m.text.length>110?'…':''}<br><small>${c.length} Wissenskarten · davon ${c.filter(x=>x.status==='approved').length} freigegeben</small></span><div class="source-actions"><button class="btn-mini" data-make="${noHtml(m.id)}">Karten gewinnen</button><button class="btn-mini danger" data-remove="${store.materials.indexOf(m)}">Entfernen</button></div></div>`;
+    return `<div class="source source-item"><strong>${subject(m.subject)?.icon||'📄'}</strong><span><b>${noHtml(m.title||'Notiz')}</b><br>${noHtml(m.text.slice(0,110))}${m.text.length>110?'…':''}<br><small>${c.length} Wissenskarten · davon ${c.filter(x=>x.status==='approved').length} freigegeben</small></span><div class="source-actions"><button class="btn-mini" data-make="${noHtml(m.id)}">Lokal erzeugen</button><button class="btn-mini" data-ai="${noHtml(m.id)}">KI-Vorschläge</button><button class="btn-mini danger" data-remove="${store.materials.indexOf(m)}">Entfernen</button></div></div>`;
   }).join(''):'<div class="empty">Noch keine Quellen. Füge zuerst Notizen oder eine Datei hinzu.</div>';
   $('cardCount').textContent=drafts+' zu prüfen · '+approved+' freigegeben';
   $('cardsList').innerHTML=cards.length?cards.slice().reverse().map(c=>{
@@ -122,7 +123,7 @@ function renderKnowledge(){
     return `<article class="knowledge-card" data-card-index="${index}"><div class="card-top"><b>${noHtml(subject(c.subject)?.icon||'📖')} ${noHtml(subject(c.subject)?.name||c.subject)}</b><span class="tiny-tag ${isDraft?'pending':'ready'}">${isDraft?'Entwurf':'Freigegeben'}</span></div>
       <label>Begriff<input data-term value="${noHtml(c.term)}" maxlength="90" ${isDraft?'':'readonly'}></label>
       <label>Erklärung<textarea data-definition rows="2" maxlength="320" ${isDraft?'':'readonly'}>${noHtml(c.definition)}</textarea></label>
-      <div class="card-origin">Quelle: ${noHtml(c.sourceTitle||'Manuell ergänzt')}</div>
+      <div class="card-origin">Quelle: ${noHtml(c.sourceTitle||'Manuell ergänzt')}${c.evidence?' · Beleg: „'+noHtml(c.evidence.slice(0,190))+'“':''}</div>
       <div class="card-actions"><button class="btn btn-green btn-mini" data-approve="${index}">${isDraft?'Prüfen & freigeben':'Wieder bearbeiten'}</button><button class="btn btn-outline btn-mini" data-remove-card="${index}">Löschen</button></div></article>`;
   }).join(''):'<div class="empty">Noch keine Wissenskarten. Aus Stichpunkten wie „Halbe Note = 2 Schläge“ entstehen überprüfbare Vorschläge.</div>';
 }
@@ -223,10 +224,27 @@ async function importData(e){
   }catch(err){toast('Backup konnte nicht geladen werden: '+(err.message||'Datei ungültig'));}
   finally{$('importBackup').value='';}
 }
+async function createAiCardsForMaterial(id){
+  const m=materialById(id);if(!m)return;
+  const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,''),token=$('aiToken').value.trim();
+  if(!/^https:\/\/[^\s/]+/.test(endpoint)||!token){toast('Zuerst HTTPS-Adresse des KI-Gateways und privaten Zugangscode eingeben.');return;}
+  const status=$('aiStatus');status.textContent='KI wertet den Text aus … (Inhalt wird an den eingestellten Dienst übertragen.)';
+  try{
+    const response=await fetch(endpoint+'/generate',{method:'POST',headers:{'authorization':'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)})});
+    let result=await response.json();
+    if(!response.ok)throw new Error(result.error||'KI-Dienst antwortet nicht ('+response.status+')');
+    const compact=t=>String(t).toLocaleLowerCase('de-DE').replace(/\s+/g,' ').trim();
+    const verified=(result.cards||[]).filter(c=>typeof c.term==='string'&&typeof c.definition==='string'&&typeof c.evidence==='string'&&compact(m.text).includes(compact(c.evidence))).slice(0,10);
+    const created=verified.map(c=>({id:uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,term:c.term.slice(0,90),definition:c.definition.slice(0,320),evidence:c.evidence.slice(0,350),status:'draft',created:new Date().toISOString()}));
+    cards.push(...created);
+    if(!persistCards()){cards.splice(-created.length);return;}
+    render();setParentTab('review');status.textContent='';toast(created.length+' KI-Entwürfe mit Quellenbeleg. Bitte prüfen.');
+  }catch(e){status.textContent='KI nicht verfügbar: '+(e.message||'Unbekannter Fehler');toast('KI-Dienst nicht verfügbar');}
+}
 function installKnowledgeFeatures(){
   $('customPracticeBtn').addEventListener('click',()=>startGeneratedLesson(selected));
   $('materialFile').addEventListener('change',handleMaterialFile);
-  $('materialsList').addEventListener('click',e=>{const btn=e.target.closest('[data-make]');if(btn)createCardsForMaterial(btn.dataset.make);});
+  $('materialsList').addEventListener('click',e=>{const btn=e.target.closest('[data-make]');if(btn)createCardsForMaterial(btn.dataset.make);const ai=e.target.closest('[data-ai]');if(ai)createAiCardsForMaterial(ai.dataset.ai);});
   $('cardsList').addEventListener('click',onKnowledgeCardClick);
   $('addManualCard').addEventListener('click',addManualCard);
   $('exportBackup').addEventListener('click',exportData);
