@@ -1,0 +1,12 @@
+# Local school notes and exports
+*.local.json
+*backup*.json
+*.env
+.dev.vars*
+node_modules/
+.DS_Store
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.webp
