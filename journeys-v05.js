@@ -23,7 +23,7 @@ const WATER_DEMO = {
 };
 let journeyState={};
 try {const raw=JSON.parse(localStorage.getItem(JOURNEY_KEY)||'{}');if(raw&&typeof raw==='object'&&!Array.isArray(raw))journeyState=raw;}catch{}
-function saveJourneyState(){try{localStorage.setItem(JOURNEY_KEY,JSON.stringify(journeyState));}catch{toast('Entdeckerreise konnte nicht gespeichert werden.');}}
+function saveJourneyState(){if(window.oskarLocal?.isReady()){window.oskarLocal.snapshot();return;}try{localStorage.setItem(JOURNEY_KEY,JSON.stringify(journeyState));}catch{toast('Entdeckerreise konnte nicht gespeichert werden.');}}
 function journeyDone(id){return !!journeyState[id]?.done;}
 function setJourneyDone(id){if(journeyDone(id))return;journeyState[id]={...(journeyState[id]||{}),done:true};saveJourneyState();renderDiscoveries();}
 function journeyUnlocked(id){if(id==='start')return true;if(id==='video')return journeyDone('start');if(id==='final')return ['math','biology','geography'].filter(journeyDone).length>=2;return journeyDone('video');}
