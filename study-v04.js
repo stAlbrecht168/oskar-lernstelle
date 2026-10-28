@@ -61,13 +61,28 @@ function renderAiTasks(){const c=$('aiTaskList');if(!c)return;const current=aiTa
 $('aiTaskList').addEventListener('click',e=>{const b=e.target.closest('[data-task-approve],[data-task-delete]');if(!b)return;const index=Number(b.dataset.taskApprove??b.dataset.taskDelete),t=aiTasks[index];if(!t)return;
  if(b.dataset.taskDelete!==undefined)aiTasks.splice(index,1);else if(t.status==='approved')t.status='draft';else{const container=b.closest('[data-task]');const question=container.querySelector('[data-tq]').value.trim(),options=[...container.querySelectorAll('[data-opt]')].map(x=>x.value.trim()),explanation=container.querySelector('[data-explanation]').value.trim(),correctIndex=Number(container.querySelector('[data-correct]').value);if(question.length<8||options.some(x=>x.length<1)||new Set(options.map(x=>x.toLowerCase())).size!==options.length||!options[correctIndex]||explanation.length<10){toast('Bitte Frage, eindeutige Antworten und Erklärung prüfen.');return;}Object.assign(t,{question,options,correctIndex,explanation,status:'approved'});}
  saveTasks();render();});
-function openMaterials(tab='materials'){setParentTab(tab);$('materials').scrollIntoView({behavior:'smooth',block:'start'});}
-// Die Materialbibliothek gehört zum jeweiligen Fach, nicht zu einem separaten Elternmodus.
-const oldDialog=$('parentOverlay').querySelector('.dialog');const content=oldDialog.querySelector('.dialog-content');
-const library=document.createElement('section');library.className='panel material-library';library.id='materials';library.innerHTML='<div class="panel-head"><h2>Materialbibliothek 📚</h2><span class="caption" id="materialProgress"></span></div><p class="small" id="studyNotice"></p>';
-library.appendChild(content);$('learn').after(library);$('parentTitle').textContent='Materialbibliothek';$('parentBtn').textContent='📚 Materialien';$('mobParent').innerHTML='<span>📚</span>Material';$('parentOverlay').classList.remove('show');
+function openMaterials(tab='materials'){openParent();setParentTab(tab);$('materialSubject').value=selected;}
+// Die Materialbibliothek bleibt im Dialog. Keine zweite, dauerhaft sichtbare Verwaltungsfläche.
+const library=$('parentOverlay').querySelector('.dialog');
+library.id='materials';library.classList.add('material-library');
+const content=library.querySelector('.dialog-content');
+const summary=document.createElement('div');summary.className='material-summary';
+summary.innerHTML='<span class="caption" id="materialProgress"></span><p class="small" id="studyNotice"></p>';
+content.insertBefore(summary,content.firstChild);
+$('parentTitle').textContent='Materialbibliothek';
+$('closeParent').setAttribute('aria-label','Materialbibliothek schließen');
+$('parentBtn').textContent='Materialbibliothek';
+$('mobParent').innerHTML='<span>📚</span>Material';
 $('parentBtn').addEventListener('click',e=>{e.stopImmediatePropagation();openMaterials();},true);
 $('mobParent').addEventListener('click',e=>{e.stopImmediatePropagation();openMaterials();},true);
+$('parentOverlay').addEventListener('keydown',e=>{
+ if(e.key!=='Tab')return;
+ const controls=Array.from(library.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')).filter(el=>el.getClientRects().length>0);
+ if(!controls.length)return;
+ const first=controls[0],last=controls[controls.length-1];
+ if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+ else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+});
 $('materialSubject').addEventListener('change',e=>chooseSubject(e.target.value));
 $('aiEndpoint').value=localStorage.getItem('oskar-ai-endpoint')||'';
 $('aiEndpoint').addEventListener('change',()=>{const val=$('aiEndpoint').value.trim();if(val.startsWith('https://'))localStorage.setItem('oskar-ai-endpoint',val);else localStorage.removeItem('oskar-ai-endpoint');});
@@ -89,6 +104,6 @@ $('importBackup').addEventListener('change',async e=>{e.stopImmediatePropagation
 // Wenn eine Materialquelle entfernt wird, werden ihre KI-Aufgaben mit entfernt.
 $('materialsList').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const id=store.materials[Number(b.dataset.remove)]?.id;if(id){aiTasks=aiTasks.filter(t=>t.sourceId!==id);saveTasks();}},true);
 // Button direkt beim Lernpfad führt zur Bibliothek.
-$('materialQuick').addEventListener('click',()=>openMaterials('materials'));
+// Die Materialbibliothek wird ausschließlich über Navigation und Kontextaktionen geöffnet.
 // Zusätzlicher Bereich im vorhandenen Prüftab.
 render();
