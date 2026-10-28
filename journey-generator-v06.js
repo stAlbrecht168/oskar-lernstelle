@@ -51,7 +51,12 @@ function validateGeneratedJourney(j){if(!j||!Array.isArray(j.stations))return fa
  return j.stations.every(s=>{const m=journeySource(s.sourceId);return m&&m.subject===s.subject&&subject(s.subject)&&bounds(s.heading,90,3)&&bounds(s.context,320,10)&&bounds(s.question,240,10)&&bounds(s.explanation,380,10)&&bounds(s.evidence,240,10)&&journeySourceValid(s)&&Array.isArray(s.options)&&s.options.length>=3&&s.options.length<=4&&s.options.every(o=>bounds(o,140))&&new Set(s.options.map(journeyNormalize)).size===s.options.length&&Number.isInteger(s.correctIndex)&&s.correctIndex>=0&&s.correctIndex<s.options.length;});
 }
 async function generateAiJourney(){
- const status=$('journeyCreateStatus');const chosen=[...document.querySelectorAll('#journeySourcePicker input:checked')].map(x=>journeySource(x.value)).filter(Boolean);
+ if(window.oskarLocal?.isSwitching?.())return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context));
+ const status=$('journeyCreateStatus');
+ if(journeyDraftItems().length>=35){status.textContent='Es sind bereits 35 oder mehr Reisen gespeichert. Bitte zuerst sichern und bei Bedarf eine Reise entfernen. Bestehende Reisen bleiben erhalten.';return;}
+ const chosen=[...document.querySelectorAll('#journeySourcePicker input:checked')].map(x=>journeySource(x.value)).filter(Boolean);
  if(chosen.length<2||chosen.length>4||new Set(chosen.map(x=>x.subject)).size<2){status.textContent='Bitte zwei bis vier Quellen aus mindestens zwei verschiedenen Fächern auswählen.';return;}
  const sources=chosen.map(m=>({id:m.id,subject:m.subject,title:m.title,text:m.text.slice(0,6500)}));
  if(sources.reduce((sum,s)=>sum+s.text.length,0)>15000){status.textContent='Die ausgewählten Quellentexte sind zusammen zu lang. Bitte weniger Material auswählen.';return;}
@@ -61,13 +66,14 @@ async function generateAiJourney(){
  try{
   const response=await fetch(endpoint+'/journey',{method:'POST',headers:{'authorization':'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({topic:$('journeyTopic').value.trim(),sources})});
   let payload;try{payload=await response.json();}catch{throw Error('Ungültige Serverantwort.');}
+  if(!current())return;
   if(!response.ok)throw Error(payload.error||'Der KI-Dienst ist nicht erreichbar.');
   if(!validateGeneratedJourney(payload.journey))throw Error('Der Vorschlag enthält keine zwei vollständig belegten Fachstationen. Andere Quellen versuchen.');
   const j={...payload.journey,id:journeyId(),status:'draft',created:new Date().toISOString(),videoId:null};
-  journeyState.aiJourneys=[j,...journeyDraftItems()].slice(0,35);saveAiJourney();
+  journeyState.aiJourneys=[j,...journeyDraftItems()];saveAiJourney();
   status.textContent='Ein neuer Entwurf ist bereit. Bitte Fragen, Antworten und Quellen prüfen.';
   $('journeyPending').scrollIntoView({behavior:'smooth',block:'start'});
- }catch(err){status.textContent='Reise konnte nicht erstellt werden: '+err.message;}
+ }catch(err){if(current())status.textContent='Reise konnte nicht erstellt werden: '+err.message;}
  finally{button.disabled=false;}
 }
 function renderGeneratedJourneys(){

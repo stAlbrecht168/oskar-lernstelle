@@ -115,26 +115,48 @@ $('aiEndpoint').value=localStorage.getItem('oskar-ai-endpoint')||'';
 $('aiEndpoint').addEventListener('change',()=>{const val=$('aiEndpoint').value.trim();if(val.startsWith('https://'))localStorage.setItem('oskar-ai-endpoint',val);else localStorage.removeItem('oskar-ai-endpoint');});
 $('testAi').addEventListener('click',async()=>{let url=$('aiEndpoint').value.trim().replace(/\/+$/,'');if(!/^https:\/\/[^\s/]+/.test(url)){toast('Bitte zuerst die HTTPS-Adresse des Workers eingeben.');return;}const status=$('aiStatus');status.textContent='Prüfe KI-Dienst …';try{const result=await fetch(url+'/health');const payload=await result.json();status.textContent=result.ok&&payload.ok&&payload.configured?'KI-Dienst erreichbar und konfiguriert.':'Der Worker ist erreichbar, aber noch nicht vollständig eingerichtet.';}catch{status.textContent='KI-Dienst nicht erreichbar. Bitte Adresse und Bereitstellung prüfen.';}});
 // Bestehende Funktion ergänzen: Die KI liefert geprüfte Entwürfe für Karten und abwechslungsreiche Quizaufgaben.
-createAiCardsForMaterial=async function(id){const m=materialById(id);if(!m)return;const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,''),token=$('aiToken').value.trim();if(!/^https:\/\/[^\s/]+/.test(endpoint)||!token){toast('Bitte HTTPS-Adresse und persönlichen Zugriffscode eingeben.');openMaterials();return;}
+createAiCardsForMaterial=async function(id){if(window.oskarLocal?.isSwitching?.())return;const context=window.oskarLocal?.getContext?.()??0;const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context))&&store.materials.includes(m);const m=materialById(id);if(!m)return;const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,''),token=$('aiToken').value.trim();if(!/^https:\/\/[^\s/]+/.test(endpoint)||!token){toast('Bitte HTTPS-Adresse und persönlichen Zugriffscode eingeben.');openMaterials();return;}
  const status=$('aiStatus');status.textContent='KI erstellt Fragen aus „'+m.title+'“ …';
- try{const response=await fetch(endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)})});const result=await response.json();if(!response.ok)throw new Error(result.error||'Dienst meldet '+response.status);
+ try{const response=await fetch(endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)})});const result=await response.json();if(!current())return;if(!response.ok)throw new Error(result.error||'Dienst meldet '+response.status);
  const norm=s=>String(s).toLocaleLowerCase('de-DE').replace(/\s+/g,' ').trim();const supported=(result.cards||[]).filter(c=>typeof c.term==='string'&&typeof c.definition==='string'&&typeof c.evidence==='string'&&norm(m.text).includes(norm(c.evidence))).slice(0,10);
  const newCards=supported.map(c=>({id:uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,term:c.term.slice(0,90),definition:c.definition.slice(0,320),evidence:c.evidence.slice(0,350),status:'draft',created:new Date().toISOString()}));
  const supportedTasks=(result.tasks||[]).filter(t=>['choice','true_false','gap'].includes(t.type)&&typeof t.question==='string'&&Array.isArray(t.options)&&t.options.length>=2&&t.options.length<=4&&t.options.every(v=>typeof v==='string'&&v.length>0)&&Number.isInteger(t.correctIndex)&&t.correctIndex>=0&&t.correctIndex<t.options.length&&typeof t.explanation==='string'&&typeof t.evidence==='string'&&norm(m.text).includes(norm(t.evidence))).slice(0,12);
  const tasks=supportedTasks.map(t=>({id:uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,type:t.type,question:t.question.slice(0,240),options:t.options.map(x=>x.slice(0,140)),correctIndex:t.correctIndex,explanation:t.explanation.slice(0,420),evidence:t.evidence.slice(0,350),status:'draft',created:new Date().toISOString()}));
  aiTasks.push(...tasks);cards.push(...newCards);saveTasks();persistCards();render();setParentTab('review');status.textContent='';toast(tasks.length+' Aufgaben und '+newCards.length+' Karten zum Prüfen erstellt.');
- }catch(err){status.textContent='KI nicht verfügbar: '+(err.message||'Unbekannter Fehler');toast('Erstellen fehlgeschlagen.');}};
+ }catch(err){if(!current())return;status.textContent='KI nicht verfügbar: '+(err.message||'Unbekannter Fehler');toast('Erstellen fehlgeschlagen.');}};
 // Die bereits eingerichtete Eventdelegation in materialsList ruft die neu belegte Funktion auf.
 const oldExport=exportData;
-$('exportBackup').addEventListener('click',e=>{e.stopImmediatePropagation();const data=JSON.stringify({version:2,exported:new Date().toISOString(),progress:store,cards,tasks:aiTasks,journeys:typeof journeyState==='object'?journeyState:{},connections:typeof connectionsCache!=='undefined'?connectionsCache:null},null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='oskar-lernstelle-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);},true);
-$('importBackup').addEventListener('change',async e=>{e.stopImmediatePropagation();const f=e.target.files?.[0];if(!f)return;try{if(f.size>3*1024*1024)throw Error('Backup ist zu groß');const obj=JSON.parse(await f.text());if(![1,2].includes(obj.version)||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw Error('Ungültiges Backup');if(!confirm('Vorhandene lokale Daten durch dieses Backup ersetzen?'))return;store={xp:Number(obj.progress.xp)||0,completed:Array.isArray(obj.progress.completed)?obj.progress.completed:[],errors:Array.isArray(obj.progress.errors)?obj.progress.errors:[],days:Array.isArray(obj.progress.days)?obj.progress.days:[],materials:obj.progress.materials.filter(x=>subject(x.subject)&&typeof x.text==='string').slice(0,100),studyLog:Array.isArray(obj.progress.studyLog)?obj.progress.studyLog.filter(x=>x&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&typeof x.subject==='string'&&['review','school','demo','journey'].includes(x.kind)).slice(-730):[],examDates:obj.progress.examDates&&typeof obj.progress.examDates==='object'&&!Array.isArray(obj.progress.examDates)?obj.progress.examDates:{}};cards=obj.cards.filter(x=>subject(x.subject)&&typeof x.term==='string'&&['draft','approved'].includes(x.status)).slice(0,500);aiTasks=(obj.tasks||[]).filter(x=>subject(x.subject)&&typeof x.question==='string'&&['draft','approved'].includes(x.status)).slice(0,500);if(obj.journeys&&typeof obj.journeys==='object'&&!Array.isArray(obj.journeys)&&typeof journeyState==='object'){journeyState=obj.journeys;saveJourneyState();}if(typeof connectionsCache!=='undefined'){
- const savedConnections=obj.connections;
- if(savedConnections&&typeof savedConnections.signature==='string'&&Array.isArray(savedConnections.connections)){
-   connectionsCache=savedConnections;
-   try{localStorage.setItem(CONNECTIONS_KEY,JSON.stringify(connectionsCache));}catch{}
- }else{connectionsCache=null;localStorage.removeItem(CONNECTIONS_KEY);}
-}
-persist();persistCards();saveTasks();render();if(typeof autoAnalyzeConnections==='function')autoAnalyzeConnections();toast('Backup wiederhergestellt.');}catch(err){toast('Import fehlgeschlagen: '+err.message);}finally{$('importBackup').value='';}},true);
+$('exportBackup').addEventListener('click',e=>{e.stopImmediatePropagation();const data=JSON.stringify({version:2,exported:new Date().toISOString(),progress:store,cards,tasks:aiTasks,assessments:typeof oskarExportAssessments==='function'?oskarExportAssessments():[],journeys:typeof journeyState==='object'?journeyState:{},connections:typeof connectionsCache!=='undefined'?connectionsCache:null},null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='oskar-lernstelle-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);},true);
+$('importBackup').addEventListener('change',async e=>{
+ e.stopImmediatePropagation();
+ const f=e.target.files?.[0];if(!f)return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context));
+ try{
+  if(!current())throw Error('Bitte warten, bis der Speicherordner verbunden ist.');
+  if(f.size>32*1024*1024)throw Error('Backup ist zu groß (maximal 32 MB).');
+  const obj=JSON.parse(await f.text());
+  if(!current())throw Error('Der Speicherordner wurde geändert. Bitte das Backup erneut auswählen.');
+  if(![1,2].includes(obj.version)||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw Error('Ungültiges Backup');
+  const missing=[];
+  const preserved=(key,label,fallback)=>{
+   if(Object.hasOwn(obj,key))return obj[key];
+   missing.push(label);return fallback;
+  };
+  const {materials,...progress}=obj.progress;
+  const bundle={materials,progress,cards:obj.cards,
+   tasks:preserved('tasks','KI-Aufgaben',aiTasks),
+   assessments:preserved('assessments','Klassenarbeiten',typeof oskarExportAssessments==='function'?oskarExportAssessments():[]),
+   journeys:preserved('journeys','Entdeckerreisen',typeof journeyState==='object'?journeyState:{}),
+   connections:preserved('connections','KI-Verbindungen',typeof connectionsCache!=='undefined'?connectionsCache:null)};
+  const notice=missing.length?' Dieses ältere Backup enthält keine '+missing.join(', ')+'. Diese vorhandenen Daten bleiben erhalten.':'';
+  if(!confirm('Vorhandene lokale Daten durch dieses Backup ersetzen?'+notice))return;
+  if(typeof window.oskarLocal?.restoreBackup!=='function')throw Error('Die sichere Wiederherstellung ist noch nicht verfügbar. Bitte die App neu laden.');
+  await window.oskarLocal.restoreBackup(bundle);
+  toast('Backup wiederhergestellt.'+notice);
+ }catch(err){toast('Import fehlgeschlagen: '+err.message);}
+ finally{$('importBackup').value='';}
+},true);
 // Wenn eine Materialquelle entfernt wird, werden ihre KI-Aufgaben mit entfernt.
 $('materialsList').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const id=store.materials[Number(b.dataset.remove)]?.id;if(id){aiTasks=aiTasks.filter(t=>t.sourceId!==id);saveTasks();}},true);
 // Button direkt beim Lernpfad führt zur Bibliothek.

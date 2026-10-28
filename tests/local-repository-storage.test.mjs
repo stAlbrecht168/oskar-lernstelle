@@ -14,8 +14,9 @@ test('user selects clone root and private data is written to its ignored subfold
  assert.match(source,/await handle\.getDirectoryHandle\('local-data',\{create:true\}\)/);
  assert.match(source,/await files\.getDirectoryHandle\(subjectId,\{create:true\}\)/);
  assert.match(source,/getDirectoryHandle\('Originaldateien',\{create:true\}\)/);
- assert.match(source,/writeSnapshot\(FS_FILES\.materials,store\.materials\)/);
- assert.match(source,/writeSnapshot\(FS_FILES\.tasks,aiTasks\)/);
+ assert.match(source,/const \{materials,\.\.\.progress\}=store/);
+ assert.match(source,/materials,cards,tasks:aiTasks,progress/);
+ assert.match(source,/await commitBundle\(target,candidate,check\)/);
  assert.match(source,/await flush\(\)/);
  assert.match(ignore,/^\/local-data\/$/m);
  assert.match(source,/for\(const key of \[KEY,CARD_KEY,TASK_KEY/);

@@ -127,13 +127,14 @@
   function openPlanner(tab) {
     previousFocus = document.activeElement;
     activeTab = tab || 'plan';
+    if (!overlay) return;
     overlay.classList.add('show');
     document.body.style.overflow = 'hidden';
     renderPlannerDialog();
-    $('plannerClose').focus({preventScroll:true});
+    $('plannerClose')?.focus({preventScroll:true});
   }
   function closePlanner() {
-    overlay.classList.remove('show');
+    overlay?.classList.remove('show');
     document.body.style.overflow = '';
     if (location.hash === '#lernplan' || location.hash === '#tracking') history.replaceState(null,'',location.pathname + location.search);
     if (previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll:true});
@@ -238,8 +239,9 @@
     return html+'</form><div class="plan-short-actions"><button class="btn btn-green" id="planSaveDates">Termine speichern</button></div><p class="small" style="margin-top:12px">Termine und Lernfortschritte werden ausschließlich im Browser dieses Geräts gespeichert und im JSON-Backup mitgesichert.</p>';
   }
   function renderPlannerDialog() {
-    if (!overlay.classList.contains('show')) return;
+    if (!overlay?.classList.contains('show')) return;
     overlay.querySelectorAll('[data-plan-tab]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.planTab===activeTab);});
+    if (!$('planContent')) return;
     $('planContent').innerHTML = activeTab==='tracking' ? renderTrackingTab() : activeTab==='dates' ? renderDatesTab() : renderPlanTab();
   }
   function renderPlanner() {
@@ -249,20 +251,26 @@
       'Klassenarbeit in '+plan.days+(plan.days===1?' Tag':' Tagen');
     var source=plan.phase.duration ? sourceHint(e.id) : 'Heute steht die Klassenarbeit im Mittelpunkt.';
     var usingExamples=typeof realQuestions === 'function' && realQuestions(e.id).length===0;
-    $('heroMeta').textContent='Deine Tagesmission · '+examInfo;
-    $('heroTitle').textContent=e.icon+' '+e.name+': '+plan.phase.title;
-    $('heroDesc').textContent=plan.phase.duration ?
+    if ($('heroMeta')) $('heroMeta').textContent='Deine Tagesmission · '+examInfo;
+    if ($('heroTitle')) $('heroTitle').textContent=e.icon+' '+e.name+': '+plan.phase.title;
+    if ($('heroDesc')) $('heroDesc').textContent=plan.phase.duration ?
       'Etwa '+plan.phase.duration+' Minuten. '+plan.phase.detail :
       plan.phase.detail;
-    $('heroSource').textContent=source;
-    $('heroDailyStatus').textContent=done?'Heute gelernt ✓':plan.phase.duration?'Heute noch offen':'Klassenarbeit';
-    $('heroDailyStatus').classList.toggle('is-done',done);
-    $('heroBtn').textContent=plan.phase.duration ? (done?'Noch eine Runde üben':usingExamples?'Mit Beispielen starten':'Tagesmission starten') : 'Zum Lernplan';
-    $('heroBtn').disabled=false;
+    if ($('heroSource')) $('heroSource').textContent=source;
+    // Ergänzende Statusanzeige darf den Lernstart bei fehlendem Markup nicht blockieren.
+    if ($('heroDailyStatus')) {
+      $('heroDailyStatus').textContent=done?'Heute gelernt ✓':plan.phase.duration?'Heute noch offen':'Klassenarbeit';
+      $('heroDailyStatus').classList.toggle('is-done',done);
+    }
+    if ($('heroBtn')) {
+      $('heroBtn').textContent=plan.phase.duration ? (done?'Noch eine Runde üben':usingExamples?'Mit Beispielen starten':'Tagesmission starten') : 'Zum Lernplan';
+      $('heroBtn').disabled=false;
+    }
     renderPlannerDialog();
   }
   function saveDates() {
     var values={}, invalid=false;
+    if (!$('planDateForm')) return;
     $('planDateForm').querySelectorAll('input[data-exam-id]').forEach(function(el) {
       if (!validDate(el.value)) invalid=true;
       values[el.dataset.examId]=el.value || null;
@@ -275,24 +283,24 @@
   }
   // Der alte Hero-Handler wird im Capture-Phase abgefangen, damit beide
   // Einstiege nicht unterschiedliche Lektionen starten.
-  $('heroBtn').addEventListener('click',function(event){
+  if ($('heroBtn')) $('heroBtn').addEventListener('click',function(event){
     event.stopImmediatePropagation();
     startPlanned();
   },true);
-  $('planOpen').addEventListener('click',function(){openPlanner('plan');});
+  $('planOpen')?.addEventListener('click',function(){openPlanner('plan');});
   function syncPlannerHash() {
     if (location.hash === '#lernplan') openPlanner('plan');
     else if (location.hash === '#tracking') openPlanner('tracking');
   }
   window.addEventListener('hashchange',syncPlannerHash);
-  $('plannerClose').addEventListener('click',closePlanner);
-  overlay.addEventListener('click',function(e){if(e.target===overlay)closePlanner();});
-  overlay.addEventListener('click',function(e){
+  $('plannerClose')?.addEventListener('click',closePlanner);
+  overlay?.addEventListener('click',function(e){if(e.target===overlay)closePlanner();});
+  overlay?.addEventListener('click',function(e){
     var tab=e.target.closest('[data-plan-tab]');
     if(tab){activeTab=tab.dataset.planTab;renderPlannerDialog();return;}
     if(e.target.closest('#planSaveDates')) saveDates();
   });
-  document.addEventListener('keydown',function(e){if(e.key==='Escape' && overlay.classList.contains('show'))closePlanner();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape' && overlay?.classList.contains('show'))closePlanner();});
   var oldRender=render;
   render=function(){applyDates();oldRender();renderPlanner();};
   applyDates();

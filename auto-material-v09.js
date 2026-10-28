@@ -98,7 +98,10 @@ function vettedCards(raw,m){
  return out.slice(0,10);
 }
 async function analyzeUploadedMaterial(m){
- if(!window.oskarLocal?.isReady())return;
+ if(!window.oskarLocal?.isReady()||window.oskarLocal?.isSwitching?.())return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context))&&store.materials.includes(m);
+ if(!current())return;
  const connection=workerConnection();
  if(!connection.ready){
   m.analysisState='waiting';persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
@@ -111,6 +114,7 @@ async function analyzeUploadedMaterial(m){
  try{
   const resp=await fetch(connection.endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+connection.token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)}),signal:AbortSignal.timeout(45000)});
   let result;try{result=await resp.json();}catch{throw Error('Ungültige Antwort des KI-Dienstes.');}
+  if(!current())return;
   if(!resp.ok)throw Error(result.error||'KI-Dienst meldet Fehler '+resp.status);
   const tasks=vettedTasks(result.tasks,m),newCards=vettedCards(result.cards,m);
   if(!tasks.length&&newCards.length<2)throw Error('Die Datei enthält zu wenig eindeutige Aussagen für ein Quiz. Bitte eine zusätzliche oder besser lesbare Seite hochladen.');
@@ -118,11 +122,13 @@ async function analyzeUploadedMaterial(m){
   cards=cards.filter(c=>c.sourceId!==m.id).concat(newCards);
   if(!saveTasks()||!persistCards())throw Error('Die Aufgaben konnten nicht gespeichert werden.');
   await window.oskarLocal.flush();
+  if(!current())return;
   m.analysisState='ready';m.analysisCount=tasks.length+newCards.length;m.analysisError='';
-  persist();await window.oskarLocal.flush();render();displayAutoHistory();
+  persist();await window.oskarLocal.flush();if(!current())return;render();displayAutoHistory();
   setAutoStatus('Fertig! '+tasks.length+' Übungen und '+newCards.length+' Lernkarten für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
  }catch(err){
+  if(!current())return;
   m.analysisState='failed';m.analysisError=String(err.message||'Unbekannter Fehler').slice(0,180);
   persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
   setAutoStatus('Datei gespeichert, aber die KI-Analyse ist fehlgeschlagen: '+m.analysisError,'failed');
@@ -130,14 +136,20 @@ async function analyzeUploadedMaterial(m){
  }
 }
 async function processPendingMaterials(){
- if(!window.oskarLocal?.isReady()||autoUploadBusy||autoAnalysisBusy)return;
+ if(!window.oskarLocal?.isReady()||window.oskarLocal?.isSwitching?.()||autoUploadBusy||autoAnalysisBusy)return;
+ const context=window.oskarLocal?.getContext?.()??0;
  const connection=workerConnection();
  if(!connection.ready){displayAutoHistory();return;}
  autoAnalysisBusy=true;
  try{
   const pending=store.materials.filter(materialNeedsAnalysis);
   for(const m of pending){if(!store.materials.includes(m))continue;await analyzeUploadedMaterial(m);}
- }finally{autoAnalysisBusy=false;}
+ }finally{
+  autoAnalysisBusy=false;
+  // Ein alter Auftrag kann den Start nach einem Ordnerwechsel kurz blockiert
+  // haben. Nur in einer neuen Generation genau eine aktuelle Queue starten.
+  if((window.oskarLocal?.getContext?.()??0)!==context&&!window.oskarLocal?.isSwitching?.()&&window.oskarLocal?.isReady())void processPendingMaterials();
+ }
 }
 async function readScannedPdf(file){
  if(!window.pdfjsLib)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',()=>!!window.pdfjsLib);
@@ -160,8 +172,11 @@ async function readScannedPdf(file){
 }
 async function ingestSchoolFile(file){
  if(!window.oskarLocal?.isReady()){setAutoStatus('Bitte zuerst einen lokalen Ordner auswählen.','waiting');return;}
+ if(window.oskarLocal?.isSwitching?.()){setAutoStatus('Bitte warten, bis der Speicherordner verbunden ist.','waiting');return;}
  if(autoUploadBusy)return;
  if(!file)return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context));
  if(!subject($('materialSubject').value)){setAutoStatus('Bitte zuerst ein Schulfach auswählen.','failed');return;}
  autoUploadBusy=true;uploadElement.disabled=true;
  const subjectId=$('materialSubject').value;
@@ -172,19 +187,22 @@ async function ingestSchoolFile(file){
    if((file.type==='application/pdf'||/\.pdf$/i.test(file.name))&&/Scan|Texterkennung/i.test(err.message||''))text=await readScannedPdf(file);
    else throw err;
   }
+  if(!current())return;
   text=String(text||'').trim();
   if(text.length<30)throw Error('Zu wenig lesbarer Text. Verwende eine gut lesbare PDF- oder Fotoaufnahme mit mindestens 30 Zeichen.');
   if(store.materials.length>=100)throw Error('Maximale Zahl von Quellen erreicht. Bitte alte Quellen entfernen oder ein Backup anlegen.');
   const id=uniqueId();
   const originalPath=await window.oskarLocal.saveOriginal(file,id,subjectId);
+  if(!current())return;
   const m={id,subject:subjectId,title:file.name.slice(0,100),originalPath,text:text.slice(0,30000),created:new Date().toISOString(),analysisState:'waiting'};
-  store.materials.push(m);persist();await window.oskarLocal.flush();render();displayAutoHistory();
+  store.materials.push(m);persist();await window.oskarLocal.flush();if(!current())return;render();displayAutoHistory();
   setAutoStatus('Datei gespeichert. Bereite die Lernaufgaben vor …','working');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
   await analyzeUploadedMaterial(m);
  }catch(err){
+  if(!current())return;
   setAutoStatus('Datei konnte nicht übernommen werden: '+(err.message||'Unbekannter Fehler'),'failed');
- }finally{uploadElement.value='';uploadElement.disabled=false;autoUploadBusy=false;}
+ }finally{if(current())uploadElement.value='';uploadElement.disabled=!window.oskarLocal?.isReady()||!!window.oskarLocal?.isSwitching?.();autoUploadBusy=false;}
 }
 const AUTO_MATERIAL_STYLES=String.raw`
 #parentOverlay #parentMaterials>.auto-note{font-size:13px;color:#687893;line-height:1.45;margin:6px 0 18px}

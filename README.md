@@ -32,7 +32,7 @@ cd ..
 git status
 ```
 
-Die Lern-App kann lokal über einen kleinen HTTP-Server bzw. eine VS-Code-Live-Server-Erweiterung ausprobiert werden. Der Cloudflare-KI-Worker erlaubt standardmäßig nur die veröffentlichte GitHub-Pages-Origin. Für KI-Tests auf `localhost` muss eine ausdrücklich autorisierte Entwicklungs-Origin eingerichtet werden. Ohne diese Einschränkung zu ändern, sollte der KI-Aufruf weiterhin in der veröffentlichten App getestet werden.
+Die Lern-App kann lokal über den mitgelieferten Entwicklungsserver oder den VS-Code-Task **Lern-App lokal starten** ausprobiert werden (siehe **Start und Tests**). Der Server stellt ausschließlich die öffentlichen App-Dateien bereit. Der Cloudflare-KI-Worker erlaubt standardmäßig nur die veröffentlichte GitHub-Pages-Origin. Für lokale KI-Tests muss eine ausdrücklich autorisierte Entwicklungs-Origin eingerichtet werden. Ohne diese Einschränkung zu ändern, sollte der KI-Aufruf weiterhin in der veröffentlichten App getestet werden.
 
 ## Privater Datenordner im geklonten Projekt
 
@@ -60,6 +60,20 @@ oskar-lernstelle/
 **`local-data/` wird durch `.gitignore` vom Git-Commit ausgeschlossen.** Schulmaterial, Noten, Lernstand und Originaldateien bleiben auf deinem Computer. Die App benötigt in Chrome oder Edge deine Erlaubnis für den Ordnerzugriff. Die auf GitHub Pages veröffentlichte Web-App kann nicht selbständig auf beliebige Ordner zugreifen.
 
 Beim erstmaligen Verbinden übernimmt die App bereits im selben Browser gespeicherte Materialien in den neuen Ordner. Sie entfernt die alten Browser-Daten erst nach erfolgreichem Schreiben. Nicht zuvor gespeicherte Uploads lassen sich nicht nachträglich übernehmen. Der Ordner ist kein automatischer Cloud-Sync. Für automatische **KI-Aufgabengenerierung** werden ausgelesene Texte weiterhin über den privaten Cloudflare-Worker an OpenAI gesendet.
+
+## Fehlerfeste lokale Speicherung
+
+Beim Verbinden werden zuerst alle sieben Datengruppen vollständig gelesen und auf ihre Struktur geprüft: Materialien, Lernkarten, KI-Aufgaben, Lernstand und Termine, Klassenarbeiten, Entdeckerreisen und KI-Verbindungen. Erst nach erfolgreicher Prüfung und Speicherung wird der neue Ordner aktiv. Fehlende Dateien werden mit leeren Standardwerten ergänzt; Daten aus einem vorherigen Ordner werden dabei nicht in den neuen übernommen. Ungültiges JSON, unzulässige Datenstrukturen oder widersprüchliche IDs brechen die Übernahme ab, statt Einträge still zu entfernen. Unterschiedliche nichtleere Lernstände im Browser und im ersten Zielordner werden ebenfalls nicht automatisch überschrieben.
+
+Zusammengehörige JSON-Dateien werden als ein Datensatz gespeichert. Vor dem ersten Schreibzugriff sichert die App das vorherige Dateiset in `local-data/.oskar-transaction.json`. Erst wenn alle Dateien erfolgreich geschrieben sind, wird dieses Journal entfernt. Scheitert ein Schreibvorgang, wird der vorherige Stand wiederhergestellt. Scheitert auch diese Wiederherstellung, bleibt das Journal erhalten und wird beim nächsten Verbinden zuerst verarbeitet. Eine beschädigte oder leere Journaldatei blockiert die Übernahme vorsichtshalber; sie sollte zusammen mit den vorhandenen Daten gesichert und anhand eines intakten privaten Backups geprüft werden, statt sie ungeprüft zu löschen.
+
+Bei einem Speicherfehler bleiben die neuen Änderungen im Arbeitsspeicher. Im Materialdialog bietet der vorhandene Ordnerbutton dann **Erneut lokal speichern** an. Erst die Meldung **Alle Änderungen wurden lokal gespeichert** bestätigt den vollständigen Schreibvorgang. Bis dahin die Seite geöffnet lassen und bei Bedarf ein privates JSON-Backup herunterladen. Nicht bestätigte Änderungen können bei einem Browserabbruch verloren gehen; wiederhergestellt wird der letzte vollständig bestätigte Stand. Originaldateien werden erst entfernt, nachdem das Löschen der zugehörigen Quelle erfolgreich gespeichert wurde. Ein laufender Import oder eine offene Übung/Reise muss vor einem Ordnerwechsel beendet oder geschlossen werden. Verspätete KI-Antworten aus dem vorherigen Speicher werden nicht in den neuen übernommen.
+
+JSON-Backups enthalten jetzt auch Klassenarbeiten und ihre Lernschwerpunkte. Die Wiederherstellung validiert den gesamten Inhalt vor der Übernahme und verwendet im Ordner denselben Schreibschutz; im Browser schützt ein temporäres Wiederherstellungsjournal den Austausch der Speicherschlüssel. Für größere eigene Exporte wurde die Importgrenze von 3 auf 32 MB erhöht. Bei älteren Backups ohne einzelne Datengruppen erklärt die Bestätigung, welche vorhandenen Gruppen erhalten bleiben. Originaldateien selbst sind nicht im JSON-Backup enthalten und müssen separat privat gesichert werden.
+
+**Grenzen:** Nur einen Tab pro Speicherordner verwenden und die Dateien nicht gleichzeitig in anderen Programmen bearbeiten. Für mehrere Tabs oder externe Schreibprozesse gibt es keine gemeinsame Sperre oder automatische Konfliktauflösung. Die Wiederherstellung setzt einen weiterhin lesbaren Datenträger und gültige Zugriffsrechte voraus. Sie schützt nicht vor einem vollständigen Datenträgerausfall und ersetzt keine separate private Sicherung. Die bisherigen Aufbewahrungsgrenzen des Lerntrackings bleiben bestehen.
+
+Speicherregressionen mit vollständig synthetischem Dateisystem: `node --test tests/local-folder-runtime.test.mjs tests/storage-integrations.test.mjs`.
 
 ## Lernpfad-Fortschritt statt doppelter Statistik
 
@@ -152,13 +166,17 @@ Der Cloudflare-Worker ist vorbereitet und kann über GitHub Actions deployed wer
 
 ## Start und Tests
 
-Für lokale Entwicklung:
+Für lokale Entwicklung wird Node.js 22 oder neuer benötigt. Es müssen keine Pakete installiert werden:
 
 ```bash
-python3 -m http.server 8000
+node scripts/dev-server.mjs
 ```
 
-Dann `http://localhost:8000` öffnen. Für den Worker: `cd worker && npm test`.
+Dann `http://127.0.0.1:8000` öffnen. Alternativ in VS Code **Terminal > Aufgabe ausführen > Lern-App lokal starten** wählen. Mit `Ctrl+C` wird der Server beendet. Ein anderer Port kann als Argument angegeben werden, zum Beispiel `node scripts/dev-server.mjs 8001`.
+
+Der Server bindet ausschließlich an `127.0.0.1`. Er liefert nur `index.html` und die zehn ausdrücklich freigegebenen JavaScript-Dateien der App aus. Verzeichnislisten, Pfadwechsel, kodierte alternative Pfade und symbolische Links auf Dateien werden abgewiesen. `local-data/`, `Originaldateien/`, `.git/`, Umgebungsdateien, Secrets, Worker-Code, Tests und interne Dokumente sind über diesen Server nicht abrufbar. Neue öffentliche App-Dateien müssen ausdrücklich zur Freigabeliste in `scripts/dev-server.mjs` hinzugefügt werden. Für die Vorschau diesen Server verwenden, da allgemeine Repository-Server private Dateien mit ausliefern können.
+
+Frontend- und Server-Tests: `node --test tests/*.test.mjs`. Die Server-Tests verwenden ausschließlich synthetische Dateien in temporären Ordnern. Für den Worker: `cd worker && npm test`.
 
 ## Nächste Arbeiten
 

@@ -4,15 +4,14 @@
     {
       "label": "Lern-App lokal starten",
       "type": "shell",
-      "command": "python3",
+      "command": "node",
       "args": [
-        "-u",
-        "-m",
-        "http.server",
-        "8000",
-        "--bind",
-        "127.0.0.1"
+        "${workspaceFolder}/scripts/dev-server.mjs",
+        "8000"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
@@ -20,7 +19,7 @@
         "panel": "dedicated",
         "clear": true
       },
-      "detail": "Lokale Vorschau: http://127.0.0.1:8000 (nur auf diesem Computer)"
+      "detail": "Lokale Vorschau: http://127.0.0.1:8000 (nur öffentliche App-Dateien, nur auf diesem Computer)"
     },
     {
       "label": "Frontend und Speicher prüfen",

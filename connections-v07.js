@@ -67,6 +67,9 @@ function renderAiConnections(){
 let connectionsTimer=null;
 function scheduleAiConnections(){if(connectionsTimer)clearTimeout(connectionsTimer);connectionsTimer=setTimeout(()=>{connectionsTimer=null;autoAnalyzeConnections();},1800);renderAiConnections();}
 async function autoAnalyzeConnections(force=false){
+ if(window.oskarLocal?.isSwitching?.())return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context));
  const sources=connectionSources(),signature=connectionSignature(sources);
  if(sources.length<2){renderAiConnections();return;}
  if(!force&&connectionsCache?.signature===signature&&!connectionsCache.error){renderAiConnections();return;}
@@ -80,6 +83,7 @@ async function autoAnalyzeConnections(force=false){
      body:JSON.stringify({sources}),signal:AbortSignal.timeout(45000)
    });
    let data;try{data=await response.json();}catch{throw new Error('Der KI-Dienst hat keine gültige Antwort geliefert.');}
+   if(!current())return;
    if(!response.ok)throw new Error(data.error||'Der KI-Dienst meldet Fehler '+response.status);
    if(!Array.isArray(data.connections))throw new Error('Die KI-Antwort enthält keine Verbindungsliste.');
    const clean=data.connections.slice(0,3).filter(c=>validAiConnection(c,sources));
@@ -89,11 +93,13 @@ async function autoAnalyzeConnections(force=false){
      if(window.oskarLocal?.isReady())window.oskarLocal.snapshot();else localStorage.setItem(CONNECTIONS_KEY,JSON.stringify(connectionsCache));
    }else connectionsQueued=true;
  }catch(error){
+   if(!current())return;
    if(connectionSignature(connectionSources())===signature){
      connectionsCache={signature,connections:[],error:String(error.message||'Unbekannter Fehler').slice(0,180)};
    }else connectionsQueued=true;
  }finally{
-   connectionsBusy=false;renderAiConnections();
+   connectionsBusy=false;
+   if(current())renderAiConnections();
    if(connectionsQueued){connectionsQueued=false;autoAnalyzeConnections();}
  }
 }

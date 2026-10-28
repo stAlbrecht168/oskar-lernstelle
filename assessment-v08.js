@@ -3,7 +3,7 @@
 'use strict';
 const KEY='oskar-lernstelle-assessments-v1';
 let assessments=[];
-try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))assessments=saved.filter(x=>x&&typeof x.subject==='string').slice(0,100);}catch{}
+try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))assessments=saved.filter(x=>x&&typeof x.subject==='string');}catch{}
 const el=id=>document.getElementById(id),escape=noHtml,core=globalThis.OskarAssessmentCore;
 function save(){
   if(globalThis.oskarLocal?.isReady()){globalThis.oskarLocal.snapshot();return true;}
@@ -11,6 +11,11 @@ function save(){
   catch{toast('Lokaler Speicher voll. Bitte Daten sichern und nicht benötigte Arbeiten löschen.');return false;}
 }
 globalThis.oskarExportAssessments=()=>assessments;
+// Nur bereits validierte Speicherdaten übernehmen, ohne Speichern oder Rendern.
+globalThis.oskarSetAssessments=raw=>{
+  if(!Array.isArray(raw))throw Error('Klassenarbeiten müssen eine Liste sein.');
+  assessments=JSON.parse(JSON.stringify(raw));
+};
 globalThis.oskarImportAssessments=raw=>{
   assessments=Array.isArray(raw)?raw.filter(x=>x&&subject(x.subject)&&typeof x.id==='string'&&typeof x.title==='string'&&Array.isArray(x.areas)).slice(0,100).map(x=>({
     id:x.id,subject:x.subject,title:x.title.slice(0,100),date:String(x.date||'').slice(0,10),
@@ -96,26 +101,31 @@ setParentTab=function(name){
 const previousRender=render;
 render=function(){previousRender();if(!panel.hidden)paint();};
 el('assFile').addEventListener('change',async e=>{
+ if(globalThis.oskarLocal?.isSwitching?.())return;
+ const context=globalThis.oskarLocal?.getContext?.()??0;
+ const current=()=>!globalThis.oskarLocal?.isSwitching?.()&&(!globalThis.oskarLocal?.isCurrent||globalThis.oskarLocal.isCurrent(context));
  const file=e.target.files?.[0];if(!file)return;
  el('assStatus').textContent='Datei wird lokal ausgelesen …';
  try{
   const t=await extractFileText(file);
+  if(!current())return;
   if(!t.trim())throw new Error('Kein Text erkannt.');
   el('assText').value=t.slice(0,12000);
   if(!el('assTitle').value)el('assTitle').value=file.name.slice(0,100);
   el('assText').closest('details').open=true;
   el('assStatus').textContent='Text erkannt. Bitte besonders Markierungen, Fehler und personenbezogene Angaben kontrollieren.';
- }catch(err){el('assStatus').textContent=err.message||'Datei konnte nicht gelesen werden.';}
+ }catch(err){if(current())el('assStatus').textContent=err.message||'Datei konnte nicht gelesen werden.';}
 });
 el('assSave').addEventListener('click',()=>{
  const id=el('assSubject').value,grade=el('assGrade').value,title=el('assTitle').value.trim()||'Klassenarbeit',
  feedback=el('assFeedback').value.trim(),text=el('assText').value.trim(),date=el('assDate').value;
  if(!subject(id)||grade&&!core.validGrade(grade)){toast('Bitte gültiges Fach und gültige Note auswählen.');return;}
  if(!grade&&!text&&!feedback&&!el('assTopics').value.trim()){toast('Bitte mindestens Note, korrigierte Arbeit oder Fehlerhinweise eingeben.');return;}
+ if(assessments.length>=100){toast('Es sind bereits 100 oder mehr Klassenarbeiten gespeichert. Bitte zuerst sichern und bei Bedarf eine Arbeit entfernen. Bestehende Arbeiten bleiben erhalten.');return;}
  const topics=[...new Set(el('assTopics').value.split(/[,;\n]/).map(s=>s.trim()).filter(s=>s.length>=3&&s.length<=85))].slice(0,5);
  const record={id:uniqueId(),subject:id,title:title.slice(0,100),date,grade,text:text.slice(0,12000),feedback:feedback.slice(0,2500),
  areas:topics.map(topic=>({topic,reason:'Von Elternteil als Übungsthema eingetragen',practiceHint:'Passende Übungen aus dem Schulmaterial lösen',evidence:'',priority:'medium',status:'approved'}))};
- assessments.push(record);if(assessments.length>100)assessments.shift();
+ assessments.push(record);
  if(!save()){assessments.pop();return;}
  for(const key of ['assGrade','assTitle','assFeedback','assTopics','assText','assFile'])el(key).value='';
  el('assStatus').textContent='Gespeichert. Falls konkrete Korrekturhinweise vorhanden sind, kannst du die KI-Auswertung starten.';
@@ -132,6 +142,9 @@ panel.addEventListener('click',async e=>{
   if(!area)return;area.status=button.dataset.assApprove?'approved':'dismissed';save();render();return;
  }
  if(button.dataset.assAnalyze){
+  if(globalThis.oskarLocal?.isSwitching?.())return;
+  const context=globalThis.oskarLocal?.getContext?.()??0;
+  const current=()=>!globalThis.oskarLocal?.isSwitching?.()&&(!globalThis.oskarLocal?.isCurrent||globalThis.oskarLocal.isCurrent(context))&&assessments.includes(record);
   const endpoint=el('aiEndpoint').value.trim().replace(/\/+$/,''),token=el('aiToken').value.trim();
   let url;try{url=new URL(endpoint);if(url.protocol!=='https:'||url.username||url.password)throw Error();}catch{toast('Zuerst im Material-Tab den HTTPS-KI-Dienst einrichten.');return;}
   if(!token){toast('Zuerst im Material-Tab den privaten Zugriffscode eingeben.');return;}
@@ -140,10 +153,10 @@ panel.addEventListener('click',async e=>{
   button.disabled=true;button.textContent='Wird ausgewertet …';el('assStatus').textContent='KI prüft die Fehlerhinweise …';
   try{
    const response=await fetch(url.href.replace(/\/$/,'')+'/analyze-assessment',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({subject:subject(record.subject).name,text:record.text,feedback:record.feedback})});
-   const data=await response.json();if(!response.ok)throw new Error(data.error||'KI-Auswertung fehlgeschlagen.');
+   const data=await response.json();if(!current())return;if(!response.ok)throw new Error(data.error||'KI-Auswertung fehlgeschlagen.');
    record.areas=(record.areas||[]).filter(x=>x.status==='approved').concat((data.areas||[]).map(a=>({...a,status:'draft'})));save();render();
    el('assStatus').textContent=data.areas?.length?'Vorschläge erhalten. Bitte anhand der Korrekturen prüfen und übernehmen.':'Keine eindeutigen Lernlücken erkennbar. Ergänze konkrete Korrekturhinweise.';
-  }catch(err){el('assStatus').textContent=err.message||'KI-Dienst antwortet nicht.';}
+  }catch(err){if(current())el('assStatus').textContent=err.message||'KI-Dienst antwortet nicht.';}
   finally{button.disabled=false;button.textContent='KI auswerten';}
  }
 });
