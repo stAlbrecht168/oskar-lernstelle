@@ -12,6 +12,14 @@ Das Second Brain ist derzeit kein separater Webdienst. Die Wissensbasis und die 
 
 Lern-App für Oskar, 5. Klasse Gymnasium in Niedersachsen. Das Interface orientiert sich an motivierenden, kleinen Duolingo-Lektionen, die Inhalte stammen aus selbst hinzugefügten Schulmaterialien.
 
+## Eine Tagesmission als zentraler Lernfokus
+
+Die Startseite verwendet nur noch **eine zentrale Missionskarte**. Sie verbindet die nächste Klassenarbeit mit dem automatisch berechneten Tagesplan. Darin stehen das heutige Fach, die konkrete Lernphase, die geplante Dauer, der Status und die Information zur anstehenden Klassenarbeit. Der primäre Button **Tagesmission starten** führt immer durch den Tagesplan. **Lernplan & Tracking** bleibt als sekundäre Aktion in derselben Karte erreichbar.
+
+Es gibt keine zweite Karte „Deine Tagesmission“ mehr. Die **linke Spalte** ist der Lernbereich mit Hauptmission, Lernpfad und Entdeckerreisen. Die schmalere **rechte Spalte** enthält nur ergänzende Informationen wie Klassenarbeitstermine, Fortschritt und Erklärvideos. Fehlertraining und Arbeitsblatt-Druck liegen als sekundäre Lernaktionen in der linken Spalte. Auf schmalen Bildschirmen stehen die Zusatzinformationen unter dem Lernbereich.
+
+Regressionsprüfung: `node --test tests/ux-primary-mission.test.mjs`.
+
 ## Klausurbezogener Tagesplan und Lerntracking (Version 0.8)
 
 Die Startseite zeigt **Deine Tagesmission** direkt unter der großen Lernmission. Der Lernplan öffnet sich als Dialog, damit die Oberfläche übersichtlich bleibt.
