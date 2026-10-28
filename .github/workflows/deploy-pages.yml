@@ -22,7 +22,8 @@ jobs:
       - name: Statische Dateien vorbereiten
         run: |
           mkdir -p public
-          cp index.html study-v04.js .nojekyll public/
+          cp index.html study-v04.js public/
+          touch public/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
