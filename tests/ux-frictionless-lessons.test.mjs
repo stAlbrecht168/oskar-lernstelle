@@ -38,9 +38,10 @@ test('discovery section focuses on journeys without separate bridge catalog',()=
  assert.doesNotMatch(journey,/bridgeList/);
  assert.match(generator,/\$\('discoveries'\)\.append\(section\)/);
 });
-test('open visual layout focuses on main lessons rather than white panel outlines',()=>{
- assert.match(page,/\.left-col>\#learn,\.left-col>\#discoveries\{background:transparent;border:0/);
- assert.match(page,/\.right-col \.panel\{padding:18px 0 20px;background:transparent;border:0/);
+test('distinct soft background areas separate lessons, discoveries and supporting information',()=>{
+ assert.match(page,/\.left-col>\#learn\{background:\#fff;border:0/);
+ assert.match(page,/\.left-col>\#discoveries\{background:linear-gradient\(/);
+ assert.match(page,/\.right-col \.panel\{padding:18px;background:rgba\(/);
  assert.match(page,/\#discoveries \.journey-node button\{border:0/);
  assert.doesNotMatch(page,/erst Karten freigeben/);
 });
