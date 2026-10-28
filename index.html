@@ -20,12 +20,12 @@ main{padding-top:26px;padding-bottom:105px}.intro{margin:10px 0 21px}.eyebrow{fo
 @media print{body{background:#fff}.wrap,header,main,.overlay,.toast,.mobile-nav{display:none!important}.print-area{display:block!important;padding:10mm 11mm;color:#111;font:13pt/1.5 Arial,sans-serif}.print-area h1{font:700 25pt Arial,sans-serif;margin:0 0 6mm}.print-meta{border-bottom:1px solid #777;padding-bottom:4mm;margin-bottom:6mm}.print-question{break-inside:avoid;margin:0 0 14mm}.print-question h2{font:700 14pt Arial,sans-serif}.print-choices{font:12pt Arial,sans-serif;display:grid;gap:4mm;margin:5mm 0 0 3mm}.answer-key{break-before:page}.print-area textarea{display:none}}
 .custom-start{display:block;width:100%;margin-top:13px}.source-item{align-items:flex-start}.source-actions{display:grid;gap:7px}.source-actions button,.btn-mini{font-size:12px!important;padding:8px 11px!important;box-shadow:none!important}.source button.btn-mini{color:#42567b;background:#eaf0fa}.source button.danger{color:#b35b63;background:#ffeff1}.knowledge-card{border:1px solid var(--line);border-radius:16px;margin:12px 0;padding:16px;background:#fff}.knowledge-card label{display:block;font-size:12px;font-weight:850;margin-top:10px}.knowledge-card input,.knowledge-card textarea,.field input[type="text"],.field input[type="password"]{box-sizing:border-box;width:100%;border:2px solid var(--line);border-radius:10px;font:inherit;padding:9px;color:var(--ink);background:#fff}.knowledge-card [readonly]{background:#f9fbfe}.card-top,.card-actions{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.card-origin{font-size:11px;color:var(--muted);margin:9px 0}.tiny-tag{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:850}.tiny-tag.pending{color:#a46b2d;background:#fff3dc}.tiny-tag.ready{color:#19805c;background:#e4f8ed}.manual-card{border-top:1px solid var(--line);padding-top:16px;margin-top:17px}.manual-grid{display:grid;grid-template-columns:1fr 1.5fr;gap:10px}.parent-tabs{overflow-x:auto}.material-library{max-width:760px}.material-library .dialog-content{padding:24px 26px;overflow-y:auto;min-height:0;overscroll-behavior:contain}.material-library .parent-tabs{position:sticky;top:-24px;background:#fff;padding:0 0 12px;z-index:4}.material-summary{display:grid;gap:2px;margin:0 0 12px}.material-summary .small{margin:0 0 6px}.material-library .dialog-head{flex-shrink:0}@media(max-width:590px){.material-library .dialog-content{padding:18px}.material-library .parent-tabs{top:-18px}}.source-item[hidden],.knowledge-card[hidden]{display:none}.task-options{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}@media(max-width:590px){.task-options{grid-template-columns:1fr}}.parent-tabs button{white-space:nowrap}#importStatus{font-size:12px;color:#65718b;margin:8px 0;min-height:18px}.backup-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.backup-controls label{font-size:12px;font-weight:800;color:#69728b}@media(max-width:590px){.manual-grid{grid-template-columns:1fr}.source-item{flex-wrap:wrap}.source-actions{display:flex;width:100%}.source-actions button{flex:1}}
 
-/* Offene Lernfläche: nur Aktionen und Medien klar absetzen, nicht jeden Abschnitt einrahmen. */
-body{background:radial-gradient(ellipse at 12% 2%,#edf2ff 0,transparent 32%),#f7f9fd}
+/* Klare Lernbereiche durch ruhige Flächenfarben, nicht durch viele Rahmen. */
+body{background:radial-gradient(ellipse at 12% 2%,#edf2ff 0,transparent 34%),#f4f7fc}
 main.wrap{max-width:1300px}
 .layout{grid-template-columns:minmax(0,1fr) 250px;column-gap:42px}
 .left-col{gap:36px}
-.left-col>#learn,.left-col>#discoveries{background:transparent;border:0;border-radius:0;box-shadow:none;padding:0}
+.left-col>#learn{background:#fff;border:0;border-radius:26px;box-shadow:0 12px 30px rgba(38,65,110,.065);padding:26px 28px}.left-col>#discoveries{background:linear-gradient(140deg,#eaf2ff 0%,#f1f6ff 58%,#eef9f7 100%);border:0;border-radius:26px;box-shadow:0 8px 24px rgba(45,78,127,.045);padding:26px 28px}
 .left-col>#learn>.panel-head,.left-col>#discoveries>.panel-head{margin-bottom:16px}
 .left-col>.panel .panel-head h2,.left-col>#discoveries .panel-head h2{font-size:clamp(21px,2.3vw,27px);letter-spacing:-.6px}
 .left-col #learn .path-area{min-height:365px;padding:16px 0 6px}
@@ -57,17 +57,22 @@ main.wrap{max-width:1300px}
 #discoveries .ai-journey-area{border-top:1px solid #dde5f1;margin-top:12px;padding-top:22px}
 #discoveries .ai-journey-area .ai-journey-tile{border:0;background:transparent;box-shadow:none;border-radius:0;padding:13px 3px;border-bottom:1px solid #dfe7f2}
 #discoveries .ai-journey-area .ai-journey-header p{max-width:500px}
-.right-col{gap:0;align-self:start}
-.right-col .panel{padding:18px 0 20px;background:transparent;border:0;border-bottom:1px solid #dfe5f2;border-radius:0;box-shadow:none}
-.right-col .panel:last-child{border-bottom:0}
+.right-col{gap:14px;align-self:start}
+.right-col .panel{padding:18px;background:rgba(255,255,255,.78);border:0;border-radius:18px;box-shadow:0 5px 16px rgba(45,68,102,.025)}
+
 .right-col .panel-head h2{font-size:16px}
 .right-col .video-links a{background:transparent;border:0;padding:9px 0}
 
 .right-col .footnote{color:#8591a7}
 @media(max-width:990px){.layout{grid-template-columns:minmax(0,1fr) 215px;gap:26px}}
-@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.right-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 22px}.right-col .panel{padding:14px 0}.left-col{gap:28px}}
-@media(max-width:590px){.right-col{grid-template-columns:1fr}.hero{border-radius:24px}.left-col #learn .level-label{padding:4px 5px}#discoveries .journey-node button{gap:7px;padding:8px 5px}#discoveries .journey-node button .jmedia-thumb{width:47px;height:49px;flex-basis:47px}#discoveries .ai-journey-area .ai-journey-header{align-items:center}}
+@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.right-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 22px}.right-col .panel{padding:17px}.left-col{gap:28px}.left-col>#learn,.left-col>#discoveries{padding:23px}}
+@media(max-width:590px){.right-col{grid-template-columns:1fr}.left-col>#learn,.left-col>#discoveries{padding:18px;border-radius:22px}.hero{border-radius:24px}.left-col #learn .level-label{padding:4px 5px}#discoveries .journey-node button{gap:7px;padding:8px 5px}#discoveries .journey-node button .jmedia-thumb{width:47px;height:49px;flex-basis:47px}#discoveries .ai-journey-area .ai-journey-header{align-items:center}}
 
+
+.subject-source-status{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:12px 0 6px;color:#4c657f;font-size:12px;line-height:1.5}
+.subject-source-status[hidden]{display:none}
+.subject-source-label{flex:1;min-width:190px}
+.subject-source-status .btn{font-size:12px;padding:7px 12px;border-radius:10px;box-shadow:none}
 </style>
 </head>
 <body>
