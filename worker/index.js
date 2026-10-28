@@ -129,7 +129,7 @@ export default {async fetch(request,env){
   if(origin!==allow)return json({error:'Diese Herkunft ist nicht zugelassen.'},403);
   const path=new URL(request.url).pathname;
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-headers':'authorization, content-type','access-control-allow-methods':'GET, POST, OPTIONS','vary':'Origin'}});
-  if(path==='/health'&&request.method==='GET')return json({ok:true,configured:!!(env.OPENAI_API_KEY&&env.ACCESS_TOKEN),journeyGenerator:true,crossSubjectConnections:true,assessmentAnalysis:true},200,origin);
+  if(path==='/health'&&request.method==='GET')return json({ok:true,configured:!!(env.OPENAI_API_KEY&&env.ACCESS_TOKEN),journeyGenerator:true,crossSubjectConnections:true},200,origin);
   if(!['/generate','/journey','/connections','/analyze-assessment'].includes(path)||request.method!=='POST')return json({error:'Nicht gefunden.'},404,origin);
   if(!env.OPENAI_API_KEY||!env.ACCESS_TOKEN)return json({error:'KI-Dienst noch nicht eingerichtet.'},503,origin);
   if(request.headers.get('authorization')!=='Bearer '+env.ACCESS_TOKEN)return json({error:'Ungültiger Zugriffscode.'},401,origin);
