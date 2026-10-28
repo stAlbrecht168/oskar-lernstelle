@@ -23,9 +23,10 @@ test('the learning path explains material state and offers an action when AI is 
  assert.match(source,/b\.dataset\.materialAction==='retry'/);
  assert.match(study,/realQuestions\(selected\)\.length/);
 });
-test('materials and tasks remain in the private local browser store',()=>{
- assert.match(source,/const m=\{id:uniqueId\(\),subject:subjectId/);
- assert.match(source,/store\.materials\.push\(m\);persist\(\)/);
+test('original PDFs and generated tasks are saved in the selected local repo folder',()=>{
+ assert.match(source,/window\.oskarLocal\?\.isReady\(\)/);
+ assert.match(source,/await window\.oskarLocal\.saveOriginal\(file,id,subjectId\)/);
+ assert.match(source,/store\.materials\.push\(m\);persist\(\);await window\.oskarLocal\.flush\(\)/);
  assert.match(source,/sessionStorage\.getItem\('oskar-ai-access'\)/);
 });
 test('distinct section surfaces do not add repeated framed cards',()=>{
