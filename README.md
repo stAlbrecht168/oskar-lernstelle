@@ -24,6 +24,14 @@ Die Startseite zeigt **Deine Tagesmission** direkt unter der großen Lernmission
 
 **Beispiel ab 28. Oktober 2026**, auf Grundlage der bislang eingetragenen Termine: Musik (02.11.) hat zunächst Priorität, am 28./29.10. Aufgaben anwenden, am 30./31.10. die Sicherheit prüfen und Fehler wiederholen, am 01.11. einen kurzen Wissenscheck. Anschließend rückt Kunst (05.11.) stärker in den Fokus. Bei geänderten Terminen werden die Aufgaben neu verteilt. Für eine echte Klausurvorbereitung müssen die zu prüfenden Themen als Schulmaterial hinterlegt sein.
 
+## Klassenarbeiten und Lernschwerpunkte
+
+Im Materialdialog unter **Noten & Arbeiten** kannst du Noten, korrigierte Arbeiten (Foto, PDF oder Text), Lehrerhinweise und Übungsthemen erfassen. Das Material bleibt lokal gespeichert und wird beim privaten JSON-Backup mitgesichert.
+
+Die optionale KI-Auswertung erfordert eine ausdrückliche Bestätigung. Entferne vor dem Senden Namen und persönliche Angaben. Vorschläge ohne belegte Fehler werden nicht übernommen; andere Vorschläge müssen geprüft und freigegeben werden. Eine Note allein begründet keine fachliche Schwäche.
+
+Der persönliche Lernplan priorisiert bestätigte Fehler und kommende Klassenarbeiten. Der offizielle niedersächsische Lehrplan wird nicht geändert.
+
 ## Materialbibliothek und Lernpfad
 
 Die Materialbibliothek öffnet sich als Dialog über die Navigation auf Desktop und Smartphone. Der Lernpfad bleibt ohne zusätzliche Material-Verwaltungsflächen. Ein gesonderter Elternbereich existiert nicht mehr. Neue Quellen als Text, Markdown, textbasiertes PDF oder Bild (lokale Texterkennung) hinzufügen und auf erkannte Fehler kontrollieren. Aus Notizen lassen sich lokal Begriff-Erklärung-Karten vorschlagen.
