@@ -7,7 +7,7 @@ const uploadElement=document.querySelector('#materialFile');
 const uploadStatus=document.createElement('div');
 uploadStatus.id='autoMaterialStatus';uploadStatus.setAttribute('role','status');uploadStatus.setAttribute('aria-live','polite');
 const uploadHistory=document.createElement('div');uploadHistory.id='autoMaterialHistory';
-const recentMaterialText=m=>m.analysisState==='ready'?'Übungen bereit':m.analysisState==='processing'?'KI analysiert':m.analysisState==='waiting'?'KI-Verbindung fehlt':m.analysisState==='failed'?'Analyse fehlgeschlagen':'Gespeichert';
+const recentMaterialText=m=>m.analysisState==='ready'?'KI-Übungen bereit':m.analysisState==='processing'?'KI analysiert':m.analysisState==='waiting'?'KI-Verbindung fehlt':m.analysisState==='failed'?'Analyse fehlgeschlagen':'Gespeichert';
 function setAutoStatus(message,kind='working'){
  uploadStatus.dataset.state=kind;
  uploadStatus.textContent=message;
@@ -57,7 +57,7 @@ function setupSimplifiedMaterials(){
    if(b.dataset.autoAction==='retry')processPendingMaterials();
  });
  displayAutoHistory();
- if(store.materials.some(m=>m.analysisState==='waiting'||m.analysisState==='failed'))processPendingMaterials();
+ if(store.materials.some(m=>m.analysisState==='waiting'||(!m.analysisState&&!aiTasks.some(t=>t.sourceId===m.id&&t.generatedByAI))))processPendingMaterials();
 }
 function workerConnection(){
  const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,'');
@@ -107,7 +107,7 @@ async function analyzeUploadedMaterial(m){
   if(!saveTasks()||!persistCards())throw Error('Der lokale Browser-Speicher ist voll.');
   m.analysisState='ready';m.analysisCount=tasks.length+newCards.length;m.analysisError='';
   persist();render();displayAutoHistory();
-  setAutoStatus('Fertig! '+tasks.length+' Übungen und '+newCards.length+' Lernkarten für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff.','ready');
+  setAutoStatus('Fertig! '+tasks.length+' Übungen und '+newCards.length+' Lernkarten für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
  }catch(err){
   m.analysisState='failed';m.analysisError=String(err.message||'Unbekannter Fehler').slice(0,180);
@@ -122,7 +122,7 @@ async function processPendingMaterials(){
  if(!connection.ready){displayAutoHistory();return;}
  autoAnalysisBusy=true;
  try{
-  const pending=store.materials.filter(m=>m.analysisState==='waiting'||m.analysisState==='failed');
+  const pending=store.materials.filter(m=>m.analysisState==='waiting'||(!m.analysisState&&!aiTasks.some(t=>t.sourceId===m.id&&t.generatedByAI)));
   for(const m of pending){if(!store.materials.includes(m))continue;await analyzeUploadedMaterial(m);}
  }finally{autoAnalysisBusy=false;}
 }
