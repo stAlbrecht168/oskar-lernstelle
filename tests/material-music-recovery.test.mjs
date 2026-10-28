@@ -19,7 +19,8 @@ test('the learning path explains material state and offers an action when AI is 
  assert.match(source,/KI-Verbindung fehlt/);
  assert.match(source,/Analyse fehlgeschlagen/);
  assert.match(source,/data-material-action/);
- assert.match(source,/button\.dataset\.materialAction='retry'/);
+ assert.match(source,/action='retry';actionName='Erneut versuchen'/);
+ assert.match(source,/b\.dataset\.materialAction==='retry'/);
  assert.match(study,/realQuestions\(selected\)\.length/);
 });
 test('materials and tasks remain in the private local browser store',()=>{
