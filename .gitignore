@@ -10,3 +10,6 @@ node_modules/
 *.jpeg
 *.png
 *.webp
+
+# Oskars private school files, generated exercises and study progress
+/local-data/
