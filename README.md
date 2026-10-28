@@ -26,6 +26,16 @@ Die KI sucht nach **fachlichen Lerntransfers** statt nach vorgegebenen Stichwör
 
 Für eine Analyse werden bis zu vier zuletzt relevante Quellen berücksichtigt, jeweils mit bis zu 3.500 Zeichen. Die KI-Vorschläge werden pro Quellenstand im Browser zwischengespeichert. Werden Materialien ergänzt, entfernt oder per Backup ausgetauscht, wird die Analyse aktualisiert. Der Zugriffscode für den KI-Dienst wird nicht dauerhaft gespeichert und muss nach einem Neuladen der Seite erneut eingegeben werden. Die Schultexte werden erst mit eingerichteter, authentifizierter KI-Verbindung an den Worker übermittelt. OpenAI-Nutzung kann Kosten verursachen.
 
+## Noten, korrigierte Arbeiten und adaptiver Lernplan
+
+Im Dialog **Materialbibliothek → Noten & Arbeiten** lassen sich Noten (1–6, auch +/-), Fach, Datum sowie korrigierte Klassenarbeiten (PDF, Bild oder Text) und Lehrerkommentare erfassen. Eine Note allein belegt keine konkrete Lernlücke. Fotos und textbasierte PDFs werden im Browser eingelesen. Bei Scans und handschriftlichen Korrekturen muss der erkannte Text überprüft und bei Bedarf ergänzt werden.
+
+Mit **KI auswerten** werden nach ausdrücklicher Bestätigung ausschließlich Text der Arbeit und Fehlerhinweise an den eingerichteten Cloudflare Worker und OpenAI übertragen. Vorher Namen und andere persönliche Daten entfernen. Das Modell liefert höchstens fünf belegte Vorschläge. Diese werden erst nach **Übernehmen** für den Lernplan verwendet. Auch eigene Übungsthemen können ohne KI hinzugefügt werden.
+
+Der **persönliche Lernplan** wird aus bestätigten Fehlerschwerpunkten, bisherigen Quizfehlern und anstehenden Klassenarbeiten neu berechnet. Er zeigt fünf Werktage mit 15-Minuten-Einheiten. Sind passende, freigegebene Aufgaben aus dem Schulstoff vorhanden, können diese direkt geübt werden. Andernfalls verweist er auf die Materialbibliothek: Es werden keine unpassenden Demoaufgaben als Fachtraining ausgegeben. Der offizielle Kerncurriculum-Lehrplan wird **nicht** verändert.
+
+Noten, Arbeitsauszüge und Analysen verbleiben auf diesem Gerät im Browser-Speicher und sind in JSON-Backups enthalten. Die Originaldatei wird nicht hochgeladen oder dauerhaft im Repository gespeichert. Das Material kann beim Klick auf **KI auswerten** an den KI-Anbieter gesendet werden; der Worker nutzt `store:false`, was Verarbeitung oder Logging beim Anbieter nicht vollständig ausschließt. Die App bietet keine klinische oder pädagogische Diagnose.
+
 ## KI-Dienst
 
 Der Cloudflare-Worker ist vorbereitet und kann über GitHub Actions deployed werden, sobald vier private Secrets eingerichtet sind. Anleitung: [worker/README.md](worker/README.md). Die OpenAI-Nutzung ist kostenpflichtig und erfordert einen eigenen API-Schlüssel. Die GitHub-Page kann keinen geheimen OpenAI-Schlüssel sicher im Frontend speichern.
