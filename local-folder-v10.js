@@ -3,7 +3,7 @@
 (function(){
 'use strict';
 const DB='oskar-folder-handle-v1', STORE='folders', HANDLE_KEY='selected';
-const FS_FILES={materials:'materialien.json',cards:'lernkarten.json',tasks:'aufgaben.json',progress:'lernstand.json'};
+const FS_FILES={materials:'materialien.json',cards:'lernkarten.json',tasks:'aufgaben.json',progress:'lernstand.json',assessments:'klassenarbeiten.json',journeys:'entdeckerreisen.json',connections:'fachverbindungen.json'};
 let directory=null,savedHandle=null,activated=false,writeQueue=Promise.resolve(),writeError=null;
 const scheduled=new Map();
 const $=id=>document.getElementById(id);
@@ -78,6 +78,9 @@ function snapshot(){
  writeSnapshot(FS_FILES.tasks,aiTasks);
  const {materials,...progress}=store;
  writeSnapshot(FS_FILES.progress,progress);
+ if(typeof globalThis.oskarExportAssessments==='function')writeSnapshot(FS_FILES.assessments,globalThis.oskarExportAssessments());
+ if(typeof journeyState==='object')writeSnapshot(FS_FILES.journeys,journeyState);
+ if(typeof connectionsCache!=='undefined')writeSnapshot(FS_FILES.connections,connectionsCache);
 }
 async function flush(){
  await writeQueue;
@@ -121,10 +124,12 @@ async function connect(handle){
  directory=await handle.getDirectoryHandle('local-data',{create:true});
  try{
    const existingM=await readJson(FS_FILES.materials),existingC=await readJson(FS_FILES.cards),
-         existingT=await readJson(FS_FILES.tasks),existingP=await readJson(FS_FILES.progress);
+         existingT=await readJson(FS_FILES.tasks),existingP=await readJson(FS_FILES.progress),
+         existingA=await readJson(FS_FILES.assessments),existingJ=await readJson(FS_FILES.journeys),existingCo=await readJson(FS_FILES.connections);
    if(existingM&&!Array.isArray(existingM))throw Error('materialien.json muss eine Liste enthalten.');
    if(existingC&&!Array.isArray(existingC))throw Error('lernkarten.json muss eine Liste enthalten.');
    if(existingT&&!Array.isArray(existingT))throw Error('aufgaben.json muss eine Liste enthalten.');
+   if(existingA&&!Array.isArray(existingA))throw Error('klassenarbeiten.json muss eine Liste enthalten.');
    // Legacy browser data is migrated once, but switching to another folder does not copy old folder data.
    const legacyM=wasActive?[]:store.materials;
    const legacyC=wasActive?[]:cards,legacyT=wasActive?[]:aiTasks;
@@ -138,9 +143,15 @@ async function connect(handle){
        store[key]=key==='xp'?0:key==='examDates'?{}:[];
      }
    }
+   if(typeof journeyState==='object'&&existingJ&&typeof existingJ==='object'&&!Array.isArray(existingJ))journeyState=existingJ;
+   if(typeof connectionsCache!=='undefined'&&existingCo&&typeof existingCo==='object')connectionsCache=existingCo;
+   if(typeof globalThis.oskarImportAssessments==='function'){
+     const oldAssessments=wasActive?[]:globalThis.oskarExportAssessments();
+     globalThis.oskarImportAssessments(mergeById(existingA||[],oldAssessments));
+   }
    scheduled.clear();wrapPersistence();snapshot();await flush();
    // Browser data is erased only after the folder has been successfully written.
-   for(const key of [KEY,CARD_KEY,TASK_KEY])localStorage.removeItem(key);
+   for(const key of [KEY,CARD_KEY,TASK_KEY,'oskar-lernstelle-assessments-v1','oskar-lernstelle-journeys-v1','oskar-subject-connections-v1'])localStorage.removeItem(key);
    savedHandle=handle;
    try{await handleDb('put',handle);}catch{}
    setStatus('Speicherort: '+handle.name+'/local-data. Schulmaterial, Aufgaben und Lernstand werden lokal gespeichert und nicht ins Git-Repository übertragen.','ready');
@@ -168,7 +179,7 @@ button.addEventListener('click',async()=>{
 });
 const firstField=$('parentMaterials')?.querySelector('.field');
 if(firstField)firstField.before(host);
-window.oskarLocal={isReady,saveOriginal,removeOriginal,flush,connect};
+window.oskarLocal={isReady,saveOriginal,removeOriginal,flush,connect,snapshot};
 setStatus(hasFolderApi()?'Wähle einmal deinen geklonten Ordner oskar-lernstelle. Die App erstellt darin local-data und speichert dort Schuldateien und KI-Aufgaben.':'Lokaler Ordnerzugriff benötigt Chrome oder Edge auf dem Computer.');
 if(hasFolderApi()){
  handleDb('get').then(async handle=>{
