@@ -64,3 +64,14 @@ Der Endpunkt `POST /connections` untersucht zwei bis vier Schulquellen aus minde
 
 Die Lern-App startet die Analyse automatisch nach dem Speichern von Material, sobald zwei geeignete Fächer und die Verbindung in der aktuellen Browsersitzung vorhanden sind. Sie prüft die Belege erneut im Browser und speichert Ergebnisse lokal, um identische KI-Aufrufe zu vermeiden. Keine Verbindung wird als bewiesenes Wissen oder automatisch freigegebene Quizantwort dargestellt.
 
+
+
+## Dauerhafte Wissensbasis (Version 0.10)
+
+`POST /generate` akzeptiert zusätzlich `subjectId` und bis zu zwölf `existingTopics` mit ID, Fach, Titel, Zusammenfassung und einer Quellenstelle. Die Antwort ergänzt `topics` und `conflicts`. Neue Aussagen werden ausschließlich im neuen Schultext verankert. Geheimnisse bleiben weiterhin Worker-Secrets.
+
+`POST /knowledge-ask` nimmt `question` und ein bis vier `sources` entgegen; Quellen dürfen zusammen höchstens 18.000 Zeichen enthalten. Antworten ohne ausreichende Grundlage müssen `insufficient:true` melden. Alle angegebenen Zitate werden gegen die mitgelieferten Quellen geprüft.
+
+`POST /topic-practice` verwendet `topic` und dieselben Quellen. Jede Quizfrage enthält ihre `sourceId` und ein geprüftes wörtliches Zitat. Beide Endpunkte verwenden unverändert Bearer-Zugang und die zugelassene Browser-Herkunft.
+
+Nach Änderungen am Worker prüft `scripts/live-smoke.mjs` im Deployment-Job die echte Verbindung mit erfundenem Schultext. Der Test protokolliert nur Prüfergebnisse; keine Schlüssel, Zugangscodes oder privaten Schulunterlagen. Dabei erfolgen drei kleine Modellaufrufe über die vorhandene API-Anbindung.

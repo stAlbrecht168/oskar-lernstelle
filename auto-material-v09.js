@@ -9,8 +9,8 @@ uploadStatus.id='autoMaterialStatus';uploadStatus.setAttribute('role','status');
 const uploadHistory=document.createElement('div');uploadHistory.id='autoMaterialHistory';
 function materialPlayable(m){
  if(!m)return false;
- if(aiTasks.some(t=>t.sourceId===m.id&&t.status==='approved'&&Array.isArray(t.options)&&t.options.length>=2))return true;
- return new Set(cards.filter(c=>c.sourceId===m.id&&c.status==='approved'&&typeof c.term==='string'&&typeof c.definition==='string').map(c=>String(c.term).toLocaleLowerCase('de-DE').trim())).size>=2;
+ if(aiTasks.some(t=>t.sourceId===m.id&&t.status==='approved'&&Array.isArray(t.options)&&t.options.length>=2&&(!globalThis.OskarKnowledgeCore||globalThis.OskarKnowledgeCore.validTask(t,[m]))))return true;
+ return new Set(cards.filter(c=>c.sourceId===m.id&&c.status==='approved'&&typeof c.term==='string'&&typeof c.definition==='string'&&(!globalThis.OskarKnowledgeCore||globalThis.OskarKnowledgeCore.validTask(c,[m]))).map(c=>String(c.term).toLocaleLowerCase('de-DE').trim())).size>=2;
 }
 function materialNeedsAnalysis(m){
  if(!m||typeof m.text!=='string'||m.text.trim().length<30)return false;
@@ -65,10 +65,11 @@ function setupSimplifiedMaterials(){
  uploadStatus.addEventListener('click',event=>{
    const b=event.target.closest('[data-auto-action]');if(!b)return;
    if(b.dataset.autoAction==='connect'){details.open=true;$('aiToken').focus();}
-   if(b.dataset.autoAction==='retry')processPendingMaterials();
+   if(b.dataset.autoAction==='retry')processPendingMaterials(true);
  });
  displayAutoHistory();
- if(store.materials.some(materialNeedsAnalysis))processPendingMaterials();
+ for(const m of store.materials)if(m.analysisState==='processing')m.analysisState='waiting';
+ window.addEventListener('load',()=>{if(store.materials.some(materialNeedsAnalysis))processPendingMaterials();},{once:true});
 }
 function workerConnection(){
  const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,'');
@@ -100,6 +101,7 @@ function vettedCards(raw,m){
 async function analyzeUploadedMaterial(m){
  if(!window.oskarLocal?.isReady())return;
  const connection=workerConnection();
+ const sourceRevision=globalThis.OskarKnowledgeCore?.revision(m);
  if(!connection.ready){
   m.analysisState='waiting';persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
   setAutoStatus('Datei gespeichert. Für die automatische KI-Analyse bitte einmal den privaten Zugriffscode eingeben.','waiting');
@@ -109,23 +111,29 @@ async function analyzeUploadedMaterial(m){
  m.analysisState='processing';persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
  setAutoStatus('Datei gespeichert. Die KI erstellt jetzt Lernkarten und Übungsaufgaben …','working');
  try{
-  const resp=await fetch(connection.endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+connection.token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)}),signal:AbortSignal.timeout(45000)});
+  const resp=await fetch(connection.endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+connection.token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,subjectId:m.subject,text:m.text.slice(0,18000),existingTopics:typeof globalThis.oskarKnowledgeContext==='function'?globalThis.oskarKnowledgeContext(m):[]}),signal:AbortSignal.timeout(60000)});
   let result;try{result=await resp.json();}catch{throw Error('Ungültige Antwort des KI-Dienstes.');}
   if(!resp.ok)throw Error(result.error||'KI-Dienst meldet Fehler '+resp.status);
+  if(!store.materials.includes(m))return;
+  if(sourceRevision&&globalThis.OskarKnowledgeCore.revision(m)!==sourceRevision)throw Error('Die Quelle wurde während der Auswertung geändert. Bitte erneut analysieren.');
   const tasks=vettedTasks(result.tasks,m),newCards=vettedCards(result.cards,m);
-  if(!tasks.length&&newCards.length<2)throw Error('Die Datei enthält zu wenig eindeutige Aussagen für ein Quiz. Bitte eine zusätzliche oder besser lesbare Seite hochladen.');
+  if(!tasks.length&&!newCards.length&&!result.topics?.length)throw Error('Die Datei enthält zu wenig eindeutige Aussagen. Bitte eine zusätzliche oder besser lesbare Seite hochladen.');
+  for(const entry of [...tasks,...newCards])if(sourceRevision)entry.sourceRevision=sourceRevision;
+  const previousTasks=aiTasks,previousCards=cards;
   aiTasks=aiTasks.filter(t=>t.sourceId!==m.id).concat(tasks);
   cards=cards.filter(c=>c.sourceId!==m.id).concat(newCards);
-  if(!saveTasks()||!persistCards())throw Error('Die Aufgaben konnten nicht gespeichert werden.');
-  await window.oskarLocal.flush();
+  if(!saveTasks()||!persistCards()){aiTasks=previousTasks;cards=previousCards;saveTasks();persistCards();throw Error('Die Aufgaben konnten nicht im lokalen Ordner gespeichert werden.');}
   m.analysisState='ready';m.analysisCount=tasks.length+newCards.length;m.analysisError='';
+  m.analysisCoverage=Math.min(m.text.length,18000);
+  if(typeof globalThis.oskarRememberKnowledge==='function')await globalThis.oskarRememberKnowledge(m,result);
   persist();await window.oskarLocal.flush();render();displayAutoHistory();
-  setAutoStatus('Fertig! '+tasks.length+' Übungen und '+newCards.length+' Lernkarten für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
+  setAutoStatus('Fertig! '+tasks.length+' '+(tasks.length===1?'Übung':'Übungen')+' und '+newCards.length+' '+(newCards.length===1?'Lernkarte':'Lernkarten')+' für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
  }catch(err){
+  if(!store.materials.includes(m))return;
   m.analysisState='failed';m.analysisError=String(err.message||'Unbekannter Fehler').slice(0,180);
   persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
-  setAutoStatus('Datei gespeichert, aber die KI-Analyse ist fehlgeschlagen: '+m.analysisError,'failed');
+  setAutoStatus('Schultext gespeichert, aber die KI-Analyse ist fehlgeschlagen: '+m.analysisError,'failed');
   const b=document.createElement('button');b.className='btn btn-outline btn-mini';b.dataset.autoAction='retry';b.textContent='Analyse erneut versuchen';uploadStatus.appendChild(b);
  }
 }
@@ -167,6 +175,7 @@ async function ingestSchoolFile(file){
  const subjectId=$('materialSubject').value;
  setAutoStatus('Lese '+file.name+' und erkenne den Schulstoff …','working');
  try{
+  if(file.size>12*1024*1024)throw Error('Die Datei ist größer als 12 MB. Bitte weniger Seiten auf einmal hochladen.');
   let text;
   try{text=await extractFileText(file);}catch(err){
    if((file.type==='application/pdf'||/\.pdf$/i.test(file.name))&&/Scan|Texterkennung/i.test(err.message||''))text=await readScannedPdf(file);
@@ -174,10 +183,23 @@ async function ingestSchoolFile(file){
   }
   text=String(text||'').trim();
   if(text.length<30)throw Error('Zu wenig lesbarer Text. Verwende eine gut lesbare PDF- oder Fotoaufnahme mit mindestens 30 Zeichen.');
+  const sourceText=text.slice(0,30000);
+  const fileHash=globalThis.OskarKnowledgeFiles?await globalThis.OskarKnowledgeFiles.fingerprint(file):'';
+  const duplicate=globalThis.OskarKnowledgeCore?store.materials.find(m=>m.subject===subjectId&&globalThis.OskarKnowledgeCore.revision(m)===globalThis.OskarKnowledgeCore.revision({subject:subjectId,text:sourceText})&&(fileHash&&m.original?.sha256?fileHash===m.original.sha256:m.title===file.name&&(!m.original||m.original.size===file.size))):null;
+  if(duplicate){
+   if(!duplicate.original&&globalThis.OskarKnowledgeFiles){
+    try{duplicate.original=await globalThis.OskarKnowledgeFiles.put(duplicate.id,file);delete duplicate.originalError;persist();}
+    catch(error){duplicate.originalError=error.message;persist();}
+   }
+   setAutoStatus('Diese Quelle ist bereits gespeichert. Vorhandenes Wissen und Übungen werden wiederverwendet.','ready');
+   if(duplicate.originalError)setAutoStatus('Schultext bereits gespeichert. Originaldatei nicht gesichert: '+duplicate.originalError,'waiting');
+   if(duplicate.analysisState!=='ready')await analyzeUploadedMaterial(duplicate);
+   return;
+  }
   if(store.materials.length>=100)throw Error('Maximale Zahl von Quellen erreicht. Bitte alte Quellen entfernen oder ein Backup anlegen.');
   const id=uniqueId();
   const originalPath=await window.oskarLocal.saveOriginal(file,id,subjectId);
-  const m={id,subject:subjectId,title:file.name.slice(0,100),originalPath,text:text.slice(0,30000),created:new Date().toISOString(),analysisState:'waiting'};
+  const m={id,subject:subjectId,title:file.name.slice(0,100),originalPath,original:{name:file.name.slice(0,160),size:file.size,sha256:fileHash},text:sourceText,created:new Date().toISOString(),analysisState:'waiting'};
   store.materials.push(m);persist();await window.oskarLocal.flush();render();displayAutoHistory();
   setAutoStatus('Datei gespeichert. Bereite die Lernaufgaben vor …','working');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();

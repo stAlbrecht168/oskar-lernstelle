@@ -38,3 +38,9 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ACCESS_TOKEN: ${{ secrets.OSKAR_ACCESS_TOKEN }}
+      - name: KI-Verbindung mit erfundenem Schultext prüfen
+        timeout-minutes: 5
+        env:
+          ACCESS_TOKEN: ${{ secrets.OSKAR_ACCESS_TOKEN }}
+          WORKER_URL: https://oskar-lernstelle-ai.sha-2d1.workers.dev
+        run: node worker/scripts/live-smoke.mjs

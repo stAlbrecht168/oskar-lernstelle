@@ -126,15 +126,61 @@ createAiCardsForMaterial=async function(id){const m=materialById(id);if(!m)retur
  }catch(err){status.textContent='KI nicht verfügbar: '+(err.message||'Unbekannter Fehler');toast('Erstellen fehlgeschlagen.');}};
 // Die bereits eingerichtete Eventdelegation in materialsList ruft die neu belegte Funktion auf.
 const oldExport=exportData;
-$('exportBackup').addEventListener('click',e=>{e.stopImmediatePropagation();const data=JSON.stringify({version:2,exported:new Date().toISOString(),progress:store,cards,tasks:aiTasks,journeys:typeof journeyState==='object'?journeyState:{},connections:typeof connectionsCache!=='undefined'?connectionsCache:null},null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='oskar-lernstelle-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);},true);
-$('importBackup').addEventListener('change',async e=>{e.stopImmediatePropagation();const f=e.target.files?.[0];if(!f)return;try{if(f.size>3*1024*1024)throw Error('Backup ist zu groß');const obj=JSON.parse(await f.text());if(![1,2].includes(obj.version)||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw Error('Ungültiges Backup');if(!confirm('Vorhandene lokale Daten durch dieses Backup ersetzen?'))return;store={xp:Number(obj.progress.xp)||0,completed:Array.isArray(obj.progress.completed)?obj.progress.completed:[],errors:Array.isArray(obj.progress.errors)?obj.progress.errors:[],days:Array.isArray(obj.progress.days)?obj.progress.days:[],materials:obj.progress.materials.filter(x=>subject(x.subject)&&typeof x.text==='string').slice(0,100),studyLog:Array.isArray(obj.progress.studyLog)?obj.progress.studyLog.filter(x=>x&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&typeof x.subject==='string'&&['review','school','demo','journey'].includes(x.kind)).slice(-730):[],examDates:obj.progress.examDates&&typeof obj.progress.examDates==='object'&&!Array.isArray(obj.progress.examDates)?obj.progress.examDates:{}};cards=obj.cards.filter(x=>subject(x.subject)&&typeof x.term==='string'&&['draft','approved'].includes(x.status)).slice(0,500);aiTasks=(obj.tasks||[]).filter(x=>subject(x.subject)&&typeof x.question==='string'&&['draft','approved'].includes(x.status)).slice(0,500);if(obj.journeys&&typeof obj.journeys==='object'&&!Array.isArray(obj.journeys)&&typeof journeyState==='object'){journeyState=obj.journeys;saveJourneyState();}if(typeof connectionsCache!=='undefined'){
- const savedConnections=obj.connections;
- if(savedConnections&&typeof savedConnections.signature==='string'&&Array.isArray(savedConnections.connections)){
-   connectionsCache=savedConnections;
-   try{localStorage.setItem(CONNECTIONS_KEY,JSON.stringify(connectionsCache));}catch{}
- }else{connectionsCache=null;localStorage.removeItem(CONNECTIONS_KEY);}
-}
-persist();persistCards();saveTasks();render();if(typeof autoAnalyzeConnections==='function')autoAnalyzeConnections();toast('Backup wiederhergestellt.');}catch(err){toast('Import fehlgeschlagen: '+err.message);}finally{$('importBackup').value='';}},true);
+$('exportBackup').addEventListener('click',async e=>{
+ e.stopImmediatePropagation();
+ const button=$('exportBackup');button.disabled=true;
+ try{
+  if(!window.oskarLocal?.isReady())throw Error('Bitte zuerst das lokale Repository verbinden.');
+  await window.oskarLocal.flush();
+  const backup={version:3,exported:new Date().toISOString(),progress:structuredClone(store),cards:structuredClone(cards),tasks:structuredClone(aiTasks),journeys:typeof journeyState==='object'?structuredClone(journeyState):{},connections:typeof connectionsCache!=='undefined'?structuredClone(connectionsCache):null,assessments:typeof oskarExportAssessments==='function'?structuredClone(oskarExportAssessments()):[],knowledge:typeof oskarExportKnowledge==='function'?oskarExportKnowledge():null,originalFiles:[]};
+  if(typeof oskarBackupOriginals==='function')backup.originalFiles=await oskarBackupOriginals(backup.progress.materials.map(m=>m.id));
+  const data=JSON.stringify(backup,null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');
+  a.href=url;a.download='oskar-lernstelle-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
+  toast('Privates Backup mit Wissen und verfügbaren Originaldateien erstellt.');
+ }catch(error){toast('Backup fehlgeschlagen: '+error.message);}
+ finally{button.disabled=false;}
+},true);
+$('importBackup').addEventListener('change',async e=>{
+ e.stopImmediatePropagation();const file=e.target.files?.[0];if(!file)return;
+ try{
+  if(!window.oskarLocal?.isReady())throw Error('Bitte zuerst das lokale Repository verbinden.');
+  if(file.size>64*1024*1024)throw Error('Backup ist größer als 64 MB.');
+  const obj=JSON.parse(await file.text());
+  if(![1,2,3].includes(obj.version)||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw Error('Ungültiges Backup.');
+  const materials=obj.progress.materials.filter(x=>x&&subject(x.subject)&&typeof x.text==='string'&&x.text.length<=30000).slice(0,100).map(m=>({...m,id:typeof m.id==='string'&&/^[-a-zA-Z0-9_:.]{1,80}$/.test(m.id)?m.id:uniqueId(),title:String(m.title||'Schulquelle').slice(0,100)}));
+  const nextStore={xp:Number(obj.progress.xp)||0,completed:Array.isArray(obj.progress.completed)?obj.progress.completed:[],errors:Array.isArray(obj.progress.errors)?obj.progress.errors:[],days:Array.isArray(obj.progress.days)?obj.progress.days:[],materials,studyLog:Array.isArray(obj.progress.studyLog)?obj.progress.studyLog.filter(x=>x&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&typeof x.subject==='string'&&['review','school','demo','journey'].includes(x.kind)).slice(-730):[],examDates:obj.progress.examDates&&typeof obj.progress.examDates==='object'&&!Array.isArray(obj.progress.examDates)?obj.progress.examDates:{}};
+  const nextCards=obj.cards.filter(x=>x&&subject(x.subject)&&typeof x.term==='string'&&x.term.length<=90&&typeof x.definition==='string'&&x.definition.length<=500&&['draft','approved'].includes(x.status)).slice(0,1000);
+  const nextTasks=(Array.isArray(obj.tasks)?obj.tasks:[]).filter(x=>x&&subject(x.subject)&&typeof x.question==='string'&&x.question.length<=240&&Array.isArray(x.options)&&x.options.length>=2&&x.options.length<=4&&x.options.every(o=>typeof o==='string'&&o.length<=140)&&Number.isInteger(x.correctIndex)&&x.correctIndex>=0&&x.correctIndex<x.options.length&&typeof x.explanation==='string'&&x.explanation.length<=420&&['draft','approved'].includes(x.status)).slice(0,1000);
+  const nextKnowledge=typeof oskarPrepareKnowledgeImport==='function'?oskarPrepareKnowledgeImport(obj.knowledge,materials):null;
+  const originalRows=typeof oskarPrepareOriginalImport==='function'?oskarPrepareOriginalImport(obj.originalFiles,materials):[];
+  const nextJourney=obj.journeys&&typeof obj.journeys==='object'&&!Array.isArray(obj.journeys)?obj.journeys:{};
+  const nextConnections=obj.connections&&typeof obj.connections.signature==='string'&&Array.isArray(obj.connections.connections)?obj.connections:null;
+  if(!confirm('Die aktuellen Lerndaten im gewählten lokalen Ordner durch dieses private Backup ersetzen? Bestehende Originaldateien werden erhalten.'))return;
+  const previous={store,cards,tasks:aiTasks,journeys:typeof journeyState==='object'?structuredClone(journeyState):{},connections:typeof connectionsCache!=='undefined'?structuredClone(connectionsCache):null,assessments:typeof oskarExportAssessments==='function'?structuredClone(oskarExportAssessments()):[],knowledge:typeof oskarExportKnowledge==='function'?oskarExportKnowledge():null};
+  await window.oskarLocal.beginImport();
+  try{
+   if(typeof oskarRestoreOriginals==='function'&&originalRows.length)await oskarRestoreOriginals(originalRows,materials);
+   store=nextStore;cards=nextCards;aiTasks=nextTasks;
+   if(typeof journeyState==='object')journeyState=nextJourney;
+   if(typeof connectionsCache!=='undefined')connectionsCache=nextConnections;
+   if(typeof oskarImportAssessments==='function')oskarImportAssessments(obj.assessments);
+   if(typeof oskarImportKnowledge==='function')oskarImportKnowledge(nextKnowledge);
+   await window.oskarLocal.finishImport();
+  }catch(error){
+   store=previous.store;cards=previous.cards;aiTasks=previous.tasks;
+   if(typeof journeyState==='object')journeyState=previous.journeys;
+   if(typeof connectionsCache!=='undefined')connectionsCache=previous.connections;
+   if(typeof oskarImportAssessments==='function')oskarImportAssessments(previous.assessments);
+   if(typeof oskarImportKnowledge==='function')oskarImportKnowledge(previous.knowledge);
+   try{await window.oskarLocal.finishImport();}catch{}
+   render();throw error;
+  }
+  persist();render();
+  if(typeof autoAnalyzeConnections==='function')autoAnalyzeConnections();
+  toast('Backup mit Wissen und Originaldateien wiederhergestellt.');
+ }catch(error){toast('Import fehlgeschlagen: '+error.message);}
+ finally{$('importBackup').value='';}
+},true);
 // Wenn eine Materialquelle entfernt wird, werden ihre KI-Aufgaben mit entfernt.
 $('materialsList').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const id=store.materials[Number(b.dataset.remove)]?.id;if(id){aiTasks=aiTasks.filter(t=>t.sourceId!==id);saveTasks();}},true);
 // Button direkt beim Lernpfad führt zur Bibliothek.

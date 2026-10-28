@@ -77,6 +77,21 @@ Die Bereiche sind über dezente Flächenfarben voneinander getrennt: **Dein Lern
 
 Automatische Prüfung: `node --test tests/ux-primary-mission.test.mjs tests/ux-frictionless-lessons.test.mjs`.
 
+## Dauerhaftes Second Brain (Version 0.10)
+
+Unter **Mein Wissen entdecken** im Lernbereich werden aus Schulmaterialien dauerhafte Themenseiten. Im Materialdialog kann zwischen **Material hinzufügen** und **Mein Wissen** gewechselt werden. Direkter Einstieg: [Mein Wissen öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#wissen).
+
+- **Themen ergänzen:** Der bestehende ChatGPT-Aufruf erzeugt neben Karten und Aufgaben kurze, belegte Themenbeiträge. Passende vorhandene Themen werden als Kontext mitgegeben. Jede Erklärung behält ihre eigene Schulquelle. Bereits vorhandene belegte KI-Karten werden ohne erneuten Modellaufruf übernommen.
+- **Wiederverwenden:** Ein unveränderter Upload wird erkannt. Die App speichert Quellenstand und Themenbeiträge und vermeidet dadurch doppelte Auswertungen. Begriffsuche und Fachfilter helfen beim Wiederfinden.
+- **Fragen und Üben:** ChatGPT beantwortet Fragen anhand von bis zu vier passenden Quellen. Ein Thema bietet eigene KI-Übungen und ein druckbares Arbeitsblatt mit getrennten Lösungen. Einmal erzeugte, noch aktuelle Themenübungen werden wiederverwendet.
+- **Korrekturen beachten:** Gespeicherter Quelltext lässt sich direkt an der Themenseite berichtigen. Frühere Ableitungen werden bis zur Aktualisierung ausgeschlossen. Mögliche, von der KI gemeldete Widersprüche zeigen beide Textbelege und pausieren betroffene Übungen. Das ist keine Garantie, alle fachlichen Fehler zu erkennen.
+- **Originale sichern:** Neue Originale bleiben im ausgewählten Repository unter `local-data/Originaldateien/<fach>/`. Wissensseiten liegen daneben in `local-data/wissen.json`. Nur das erlaubte Ordner-Handle wird in IndexedDB gemerkt, keine Schulunterlagen. Ein Speicherfehler wird angezeigt. Ältere Originaldateien müssen bei Bedarf erneut hochgeladen werden.
+- **Privates Backup:** Format 3 enthält Wissensseiten, Originaldateien, Aufgaben, Fortschritt, Noten und Reisen. Die älteren Formate 1 und 2 bleiben importierbar. Die Wiederherstellung prüft Verweise und vorhandene Dateiprüfsummen und setzt einen verbundenen lokalen Ordner voraus. Bestehende Originale bleiben beim Import erhalten. Für JSON-Backups gilt eine Grenze von 40 MB an eingebetteten Originalen; größere Bestände durch Kopieren des privaten `local-data`-Ordners sichern. Daten und Originale werden nicht in das öffentliche Repository hochgeladen.
+
+**Grenzen:** Pro Material werden weiterhin höchstens die ersten 18.000 Zeichen des erkannten Textes ausgewertet. Die Themenauswahl für Fragen ist eine begrenzte Suche und berücksichtigt bis zu vier Quellen, keine vollständige Abfrage aller Unterlagen. Die KI kann Zusammenhänge, Antworten und Widersprüche falsch einschätzen; Zitate werden technisch geprüft, die inhaltliche Richtigkeit nicht garantiert. Der direkte Zugriff auf den gewählten Ordner benötigt Chrome oder Edge auf einem Computer. Es gibt weiterhin keine automatische Gerätesynchronisierung oder serverseitige Wissensablage. Nutzerkonten, Kostenquoten und automatische Videotranskripte sind spätere Erweiterungen.
+
+**Prüfung:** `cd worker && npm test` prüft auch Quellenversionen, Themenzusammenführung, fehlende Belege, Wissens-Backups und die neuen API-Endpunkte. Die bestehenden UX-Tests bleiben Teil des CI-Workflows. Der Cloudflare-Deployment-Workflow führt zusätzlich einen kurzen Live-Test mit ausschließlich erfundenem Schultext aus; Zugangsdaten werden nur aus den vorhandenen GitHub-Secrets verwendet.
+
 ## Eine Tagesmission als zentraler Lernfokus
 
 Die Startseite verwendet nur noch **eine zentrale Missionskarte**. Sie verbindet die nächste Klassenarbeit mit dem automatisch berechneten Tagesplan. Darin stehen das heutige Fach, die konkrete Lernphase, die geplante Dauer, der Status und die Information zur anstehenden Klassenarbeit. Der primäre Button **Tagesmission starten** führt immer durch den Tagesplan. **Lernplan & Tracking** bleibt als sekundäre Aktion in derselben Karte erreichbar.
@@ -93,7 +108,7 @@ Die Startseite zeigt **Deine Tagesmission** direkt unter der großen Lernmission
 - **Termine bearbeiten:** im Dialog unter **Klausurtermine**. Die vorhandenen Beispieltermine sind vorbelegt und müssen anhand des echten Schulplans geprüft werden. Biologie hat derzeit noch kein Datum. Ein leeres Feld ist zulässig.
 - **Erledigung zuverlässig erfassen:** Eine Einheit zählt erst, wenn das Quiz bis zum Ergebnis abgeschlossen wurde (nicht beim Öffnen oder Klicken auf eine Antwort). Im Bereich **Lerntracking** gibt es 14 Tage Rückblick, die Zahl tatsächlicher Lerntage, die aktuelle Serie, absolvierte Lerneinheiten und den Prozentsatz richtiger Antworten aus freigegebenem Schulstoff. Ältere Lerntage bleiben sichtbar, enthalten aber keine rückwirkend erfundenen Einzelwerte.
 - **Echte Inhalte statt Platzhalter:** Hochgeladene Materialien werden automatisch analysiert. Belegbare KI-Aufgaben werden ohne zusätzliche Freigabe spielbar. Falls die KI-Aufgaben noch fehlen, kann Oskar ersatzweise mit ausdrücklich gekennzeichneten Beispielaufgaben starten.
-- **Datenschutz und Grenzen:** Tracking und Termine liegen im lokalen Browser. Auf einem anderen Gerät fehlt der Stand, solange er nicht mit einem privaten JSON-Backup übertragen wird. Es gibt keine automatische Elternbenachrichtigung, Synchronisierung, serverseitige Anwesenheitskontrolle oder Garantie, dass Oskar tatsächlich aufmerksam lernt. Kurzes gemeinsames Feedback nach dem Training bleibt sinnvoll.
+- **Datenschutz und Grenzen:** Tracking und Termine liegen nach dem Verbinden im privaten local-data-Ordner. Auf einem anderen Gerät fehlt der Stand, solange er nicht mit einem privaten JSON-Backup übertragen wird. Es gibt keine automatische Elternbenachrichtigung, Synchronisierung, serverseitige Anwesenheitskontrolle oder Garantie, dass Oskar tatsächlich aufmerksam lernt. Kurzes gemeinsames Feedback nach dem Training bleibt sinnvoll.
 
 **Beispiel ab 28. Oktober 2026**, auf Grundlage der bislang eingetragenen Termine: Musik (02.11.) hat zunächst Priorität, am 28./29.10. Aufgaben anwenden, am 30./31.10. die Sicherheit prüfen und Fehler wiederholen, am 01.11. einen kurzen Wissenscheck. Anschließend rückt Kunst (05.11.) stärker in den Fokus. Bei geänderten Terminen werden die Aufgaben neu verteilt. Für eine echte Klausurvorbereitung müssen die zu prüfenden Themen als Schulmaterial hinterlegt sein.
 
@@ -107,7 +122,7 @@ Der persönliche Lernplan priorisiert bestätigte Fehler und kommende Klassenarb
 
 ## Musikmaterial wird erkannt, aber noch nicht zum Üben verwendet
 
-Die Schulmaterialien liegen im lokalen Speicher des jeweiligen Browsers. Eine vorhandene Musik-PDF kann bereits gespeichert sein, obwohl bisher keine KI-Übungsfragen daraus erzeugt wurden. Das kann passieren, wenn der private KI-Zugriffscode noch fehlt, der Worker die Analyse nicht abschließen konnte oder kein ausreichend lesbarer Quellentext erkannt wurde.
+Die Schulmaterialien liegen nach dem Verbinden im ausgewählten privaten local-data-Ordner. Eine vorhandene Musik-PDF kann bereits gespeichert sein, obwohl bisher keine KI-Übungsfragen daraus erzeugt wurden. Das kann passieren, wenn der private KI-Zugriffscode noch fehlt, der Worker die Analyse nicht abschließen konnte oder kein ausreichend lesbarer Quellentext erkannt wurde.
 
 Der Lernpfad zeigt für das ausgewählte Fach jetzt einen kompakten Quellenstatus mit **Anzahl der gespeicherten Materialien und der tatsächlich spielbaren Aufgaben**. Falls KI-Aufgaben fehlen, erklärt er die Ursache und bietet „KI verbinden“ oder „Erneut versuchen“ an.
 
@@ -128,7 +143,7 @@ Der vorhandene Cloudflare-KI-Worker generiert automatisch belegte Wissenskarten 
 
 Die Worker-URL ist bereits voreingestellt: `https://oskar-lernstelle-ai.sha-2d1.workers.dev`. Für den Aufruf benötigt die App weiterhin den privaten Zugriffscode des bereits eingerichteten Workers. Er wird bei Bedarf unter **Weitere Einstellungen und Korrekturen** eingegeben und nur für die aktuelle Browser-Sitzung gespeichert. Ohne Zugriffscode bleibt die hochgeladene Quelle gespeichert und als **KI-Verbindung fehlt** sichtbar. Nach dem Verbinden werden auch zuvor gespeicherte Materialien ohne KI-Aufgaben automatisch verarbeitet.
 
-Die Originaldateien werden nicht in GitHub abgelegt. Der ausgelesene Text, Lernstand und erzeugte Fragen liegen im lokalen Speicher des verwendeten Browsers. Bei einem Fehler meldet die App, ob die Datei übernommen wurde und lediglich die KI-Erzeugung fehlgeschlagen ist.
+Die Originaldateien werden nicht in GitHub abgelegt. Der ausgelesene Text, Lernstand, Wissensseiten und erzeugte Fragen liegen im privaten local-data-Ordner. Bei einem Fehler meldet die App, ob die Datei übernommen wurde und lediglich die KI-Erzeugung fehlgeschlagen ist.
 
 ## Materialbibliothek und Lernpfad
 
@@ -136,7 +151,7 @@ Die Materialbibliothek öffnet sich als Dialog über die Navigation auf Desktop 
 
 Die optionale KI generiert aus längeren Schultexten Wissenskarten und bis zu neun verschiedene Quizfragen: Auswahl, Richtig oder falsch und Lücken mit Auswahloptionen. Alle Vorschläge enthalten einen Quellenbeleg. Die Vorschläge erscheinen zunächst als Entwürfe und müssen geprüft werden. Erst dann werden sie in den drei Levels des zugehörigen Faches eingesetzt. Wenn ein Fach Quellen, aber noch keine freigegebenen Fragen hat, werden seine Levels gesperrt und nicht mit unpassenden Demofragen gefüllt. Fächer ohne importierten Stoff haben weiter ausdrücklich gekennzeichnete Demofragen.
 
-Die Daten werden lokal im Browser gespeichert. Backups als JSON enthalten Material, Lernfortschritt, Wissenskarten und KI-Fragen. Übertrage die Backups nicht in öffentliche Repositories. Die GitHub Page ist öffentlich, die persönlichen Schulmaterialien nicht.
+Die Daten werden im ausgewählten lokalen local-data-Ordner gespeichert. Backups als JSON enthalten Material, Lernfortschritt, Wissenskarten und KI-Fragen. Übertrage die Backups nicht in öffentliche Repositories. Die GitHub Page ist öffentlich, die persönlichen Schulmaterialien nicht.
 
 ## Automatische fachübergreifende KI-Verbindungen
 
@@ -144,7 +159,7 @@ Sobald mindestens zwei längere Quellen aus unterschiedlichen Fächern gespeiche
 
 Die KI sucht nach **fachlichen Lerntransfers** statt nach vorgegebenen Stichwörtern. Jede vorgeschlagene Verbindung nennt einen gemeinsamen Gedanken, erklärt den konkreten Nutzen der Kombination und stellt eine offene Entdeckerfrage. Die Originalzitate aus mindestens zwei verschiedenen Schulquellen werden im Worker und im Browser auf Übereinstimmung geprüft. Die Ergebnisse bleiben als **KI-Vorschläge** gekennzeichnet und sollten fachlich geprüft werden. Es ist ausdrücklich möglich, dass keine Verbindung gefunden wird.
 
-Für eine Analyse werden bis zu vier zuletzt relevante Quellen berücksichtigt, jeweils mit bis zu 3.500 Zeichen. Die KI-Vorschläge werden pro Quellenstand im Browser zwischengespeichert. Werden Materialien ergänzt, entfernt oder per Backup ausgetauscht, wird die Analyse aktualisiert. Der Zugriffscode für den KI-Dienst wird nicht dauerhaft gespeichert und muss nach einem Neuladen der Seite erneut eingegeben werden. Die Schultexte werden erst mit eingerichteter, authentifizierter KI-Verbindung an den Worker übermittelt. OpenAI-Nutzung kann Kosten verursachen.
+Für eine Analyse werden bis zu vier zuletzt relevante Quellen berücksichtigt, jeweils mit bis zu 3.500 Zeichen. Die KI-Vorschläge werden pro Quellenstand im privaten local-data-Ordner gespeichert. Werden Materialien ergänzt, entfernt oder per Backup ausgetauscht, wird die Analyse aktualisiert. Der Zugriffscode für den KI-Dienst wird nicht dauerhaft gespeichert und muss nach einem Neuladen der Seite erneut eingegeben werden. Die Schultexte werden erst mit eingerichteter, authentifizierter KI-Verbindung an den Worker übermittelt. OpenAI-Nutzung kann Kosten verursachen.
 
 ## KI-Dienst
 

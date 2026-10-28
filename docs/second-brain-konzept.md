@@ -1,7 +1,7 @@
 # Second Brain für Oskars Lernstelle
 
 **Stand:** 28. Oktober 2026  
-**Status:** Zielbild und Anforderungen; mit diesem Dokument werden keine neuen App-Funktionen aktiviert.
+**Status:** Zielbild mit Umsetzungsstand für Version 0.10. Themenseiten, Quellenstände, Fragen, Themenübungen und Backups sind implementiert. Weitergehende Ziele sind unten abgegrenzt.
 
 ## Ziel
 
@@ -19,7 +19,7 @@ Keine zusätzlichen Pflichtfelder für Schlagwörter, Kapitel, Lernziele oder Wi
 
 ## Quellen und Wissen getrennt erhalten
 
-Die Trennung von Rohmaterial und aufbereitetem Wissen wird als Datenmodell übernommen. Sichtbare Ordner namens `raw` und `wiki` sind dafür nicht erforderlich.
+Die Trennung von Rohmaterial und aufbereitetem Wissen wird als Datenmodell übernommen. Originale und Wissensseiten liegen getrennt im privaten `local-data`-Ordner.
 
 | Bestandteil | Inhalt und Herkunft |
 | --- | --- |
@@ -32,7 +32,7 @@ Die Trennung von Rohmaterial und aufbereitetem Wissen wird als Datenmodell über
 
 Jede fachliche Aussage auf einer Themenseite und jede materialbezogene Aufgabe benötigt einen nachvollziehbaren Quellenbezug. Wenn verfügbar, gehören Seite, Textstelle und ein überprüfbares Zitat dazu. Ein passendes Zitat allein beweist noch keine fachlich richtige Lösung.
 
-Die dauerhafte Speicherung der Originaldateien muss gesondert umgesetzt und geprüft werden. Der gegenwärtig gespeicherte Text ist kein Ersatz für eine zugesicherte Sicherung der hochgeladenen Datei.
+Originaldateien werden im gewählten lokalen Repository unter `local-data/Originaldateien/<fach>/` gespeichert. Die Wissensbasis liegt in `local-data/wissen.json`. In IndexedDB wird nur die Ordnerfreigabe gemerkt, kein Schulmaterial. Ältere Uploads enthalten gegebenenfalls nur Text; ihre Originaldateien werden nicht nachträglich rekonstruiert. Das private JSON-Backup enthält verfügbare Originale bis insgesamt 40 MB, größere Bestände können als vollständiger privater Ordner gesichert werden.
 
 ## Die Wissensbasis wächst mit neuen Seiten
 
@@ -57,7 +57,7 @@ Erklärungen und Aufgaben sollen Oskar zuerst zum eigenen Versuch anregen. Lösu
 
 Lehrerschmidt und Daniel Jung sind die vorgesehenen Mathematik-Anbieter. Zunächst können passende Links vorgeschlagen werden. Ein Link oder Videotitel wird nicht als ausgewerteter Videoinhalt behandelt.
 
-Erst ein tatsächlich verfügbares und eingelesenes Transkript beziehungsweise eine bereitgestellte Mitschrift kann als inhaltliche Quelle dienen. Dabei werden Video-URL, Anbieter und nach Möglichkeit Zeitstellen festgehalten. Aufgaben dürfen keine angeblichen Videoinhalte erfinden. Eine automatische Beschaffung von Transkripten ist eine eigene, noch zu prüfende Erweiterung.
+Erst ein tatsächlich verfügbares und ausdrücklich eingelesenes Transkript beziehungsweise eine bereitgestellte Mitschrift kann als inhaltliche Quelle dienen. Dabei werden Video-URL, Anbieter und nach Möglichkeit Zeitstellen festgehalten. Aufgaben dürfen keine angeblichen Videoinhalte erfinden. Eine automatische Beschaffung von Transkripten ist eine eigene, noch zu prüfende Erweiterung.
 
 ## Regelmäßige Qualitätsprüfung
 
@@ -76,7 +76,7 @@ Eindeutige technische Verweise können automatisch repariert werden. Fachlich un
 - **Browser-App:** GitHub Pages im Repository `stAlbrecht168/oskar-lernstelle`.
 - **KI-Gateway:** der eingerichtete Cloudflare Worker `oskar-lernstelle-ai` unter `https://oskar-lernstelle-ai.sha-2d1.workers.dev`.
 - **Bereitstellung:** vorhandener GitHub-Workflow und die eingerichteten Secrets `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `OPENAI_API_KEY` und `OSKAR_ACCESS_TOKEN`. Secret-Werte gehören nicht in die Dokumentation oder in Browser-Dateien.
-- **Speicherung:** persönliche Schulmaterialien und Lernstände im privaten Browser-Speicher. Eine Erweiterung um Wissensseiten muss diese in Sicherung und Wiederherstellung aufnehmen. Geräteübergreifende Synchronisierung ist eine separate Funktion.
+- **Speicherung:** persönliche Schulmaterialien, Wissensseiten und Lernstände ausschließlich im ausgewählten privaten `local-data`-Ordner. Entwicklungs- und Testdaten sind synthetisch. In die öffentliche Quellcodeverwaltung gelangen keine Schulunterlagen oder Lernstände. Geräteübergreifende Synchronisierung ist eine separate Funktion.
 
 Die Wissensbasis darf strukturierte Daten verwenden; ein späterer Markdown-Export ist möglich. Für Oskar und seine Eltern sind weder ein Terminal noch zusätzliche Programme zur Wiki-Pflege erforderlich.
 
@@ -90,15 +90,15 @@ Die Anleitung ist eine Ideenquelle und wird nicht als Ganzes veröffentlicht. Ih
 
 Die Projektbeschreibung dokumentiert bereits Materialimport, KI-Karten und Fragen mit Quellenzitaten, Vorschläge für Fachverbindungen, Lernplanung, Tracking und private Backups. Der Cloudflare-Deployment-Workflow wurde erfolgreich ausgeführt. Das ersetzt keinen Test einer echten KI-Auswertung oder aller aktuellen Erweiterungen.
 
-Die folgenden Bausteine sind mit diesem Dokument als Entwicklungsziel aufgenommen:
+In Version 0.10 umgesetzt:
 
 1. Dauerhafte Themenseiten mit stabilen IDs und Quellenverweisen speichern und anzeigen.
-2. Neue Seiten gezielt in bestehende Themen einarbeiten und Änderungen versionieren.
+2. Neue Seiten gezielt in bestehende Themen einarbeiten und unterschiedliche Quellenstände erkennen.
 3. Fragen und Übungen aus diesen gespeicherten Themen mit den Originalquellen ableiten.
 4. Quellenänderungen, Widersprüche und fehlende Belege erkennen; betroffene Inhalte aktualisieren.
 5. Themenseiten, Beziehungen und gespeicherte Originale in das private Backup aufnehmen und die Wiederherstellung prüfen.
 
-Eine graphische Darstellung der Beziehungen ist optional. Vorrang haben das zuverlässige Wiederfinden von Wissen, passende Übungen und eine einfache Bedienung.
+Die Umsetzung speichert Beiträge und Quellenstände pro Thema. Namensgleiche Begriffe verschiedener Fächer bleiben getrennt; passende vorhandene Themen werden bei der KI-Auswertung als Kontext angeboten. Verweise aus gemeinsamen Unterlagen und belegte Fachverbindungen sind sichtbar. Umfangreiche Versionshistorien, eine graphische Darstellung, automatische Facherkennung und eine Volltextsuche über beliebig viele Quellen bleiben Entwicklungsziele. Vorrang haben das zuverlässige Wiederfinden von Wissen, passende Übungen und eine einfache Bedienung.
 
 ## Woran die Umsetzung überprüft wird
 
@@ -109,4 +109,4 @@ Eine graphische Darstellung der Beziehungen ist optional. Vorrang haben das zuve
 - Die normale Aufnahme erfordert keine manuelle Verschlagwortung.
 - Ein privates Backup lässt sich einschließlich der neuen Wissensdaten wiederherstellen.
 
-Diese Prüfungen sind Abnahmekriterien für die künftige Umsetzung und werden mit diesem Dokument noch nicht als bestanden gemeldet.
+Diese Fälle werden mit automatisierten Tests und Browserprüfungen mit erfundenem Schultext überprüft. Die Browserprüfung verwendet eine simulierte KI; der Deployment-Workflow prüft die echte KI-Anbindung zusätzlich. Dessen konkretes Ergebnis ist am jeweiligen Workflow-Lauf erkennbar. Die technische Prüfung von Zitaten ersetzt keine fachliche Kontrolle.

@@ -3,8 +3,9 @@
 (function(){
 'use strict';
 const DB='oskar-folder-handle-v1', STORE='folders', HANDLE_KEY='selected';
-const FS_FILES={materials:'materialien.json',cards:'lernkarten.json',tasks:'aufgaben.json',progress:'lernstand.json',assessments:'klassenarbeiten.json',journeys:'entdeckerreisen.json',connections:'fachverbindungen.json'};
-let directory=null,savedHandle=null,activated=false,writeQueue=Promise.resolve(),writeError=null;
+const FS_FILES={materials:'materialien.json',cards:'lernkarten.json',tasks:'aufgaben.json',progress:'lernstand.json',assessments:'klassenarbeiten.json',journeys:'entdeckerreisen.json',connections:'fachverbindungen.json',knowledge:'wissen.json'};
+let directory=null,savedHandle=null,activated=false,writeQueue=Promise.resolve(),paused=0;
+const writeErrors=new Map();
 const scheduled=new Map();
 const $=id=>document.getElementById(id);
 const button=document.createElement('button'),status=document.createElement('p'),host=document.createElement('div');
@@ -68,12 +69,12 @@ function writeSnapshot(name,content){
  const target=directory;
  writeQueue=writeQueue.catch(()=>{}).then(async()=>{
    if(target!==directory)return;
-   try{await writeFile(name,value);writeError=null;}
-   catch(err){writeError=err;scheduled.delete(name);setStatus('Lokales Speichern fehlgeschlagen: '+err.message,'error');throw err;}
+   try{await writeFile(name,value);writeErrors.delete(name);}
+   catch(err){writeErrors.set(name,err);scheduled.delete(name);setStatus('Lokales Speichern fehlgeschlagen: '+err.message,'error');throw err;}
  });
 }
 function snapshot(){
- if(!directory)return;
+ if(!directory||paused)return;
  writeSnapshot(FS_FILES.materials,store.materials);
  writeSnapshot(FS_FILES.cards,cards);
  writeSnapshot(FS_FILES.tasks,aiTasks);
@@ -82,15 +83,18 @@ function snapshot(){
  if(typeof globalThis.oskarExportAssessments==='function')writeSnapshot(FS_FILES.assessments,globalThis.oskarExportAssessments());
  if(typeof journeyState==='object')writeSnapshot(FS_FILES.journeys,journeyState);
  if(typeof connectionsCache!=='undefined'&&connectionsCache!==null)writeSnapshot(FS_FILES.connections,connectionsCache);
+ if(typeof globalThis.oskarExportKnowledge==='function')writeSnapshot(FS_FILES.knowledge,globalThis.oskarExportKnowledge());
 }
 async function flush(){
  await writeQueue;
- if(writeError)throw writeError;
+ if(writeErrors.size)throw writeErrors.values().next().value;
 }
+async function beginImport(){await flush();paused++;}
+async function finishImport(){paused=Math.max(0,paused-1);snapshot();await flush();}
 function wrapPersistence(){
  if(activated)return;
  activated=true;
- persist=function(){snapshot();};
+ persist=function(){if(typeof globalThis.oskarKnowledgeSourcesChanged==='function')globalThis.oskarKnowledgeSourcesChanged();snapshot();return true;};
  persistCards=function(){snapshot();return true;};
  saveTasks=function(){snapshot();return true;};
 }
@@ -116,6 +120,13 @@ async function removeOriginal(item){
    await sub.removeEntry(parts[2]);
  }catch(e){if(e.name!=='NotFoundError')setStatus('Originaldatei konnte nicht gelöscht werden: '+e.message,'error');}
 }
+async function readOriginal(item){
+ if(!directory||!item?.originalPath)return null;
+ const parts=item.originalPath.split('/'),safeId=String(item.id).replace(/[^a-zA-Z0-9_-]/g,'');
+ if(parts.length!==3||parts[0]!=='Originaldateien'||parts[1]!==item.subject||!subjects.has(parts[1])||!parts[2].startsWith(safeId+'-'))throw Error('Ungültiger Originaldatei-Verweis.');
+ try{const base=await directory.getDirectoryHandle('Originaldateien'),sub=await base.getDirectoryHandle(parts[1]),handle=await sub.getFileHandle(parts[2]);return await handle.getFile();}
+ catch(error){if(error.name==='NotFoundError')return null;throw error;}
+}
 async function connect(handle){
  if(!handle||handle.kind!=='directory')throw Error('Es wurde kein Ordner ausgewählt.');
  // Read existing files before changing the active source to avoid partial migrations.
@@ -126,11 +137,12 @@ async function connect(handle){
  try{
    const existingM=await readJson(FS_FILES.materials),existingC=await readJson(FS_FILES.cards),
          existingT=await readJson(FS_FILES.tasks),existingP=await readJson(FS_FILES.progress),
-         existingA=await readJson(FS_FILES.assessments),existingJ=await readJson(FS_FILES.journeys),existingCo=await readJson(FS_FILES.connections);
+         existingA=await readJson(FS_FILES.assessments),existingJ=await readJson(FS_FILES.journeys),existingCo=await readJson(FS_FILES.connections),existingK=await readJson(FS_FILES.knowledge);
    if(existingM&&!Array.isArray(existingM))throw Error('materialien.json muss eine Liste enthalten.');
    if(existingC&&!Array.isArray(existingC))throw Error('lernkarten.json muss eine Liste enthalten.');
    if(existingT&&!Array.isArray(existingT))throw Error('aufgaben.json muss eine Liste enthalten.');
    if(existingA&&!Array.isArray(existingA))throw Error('klassenarbeiten.json muss eine Liste enthalten.');
+   if(existingK&&(existingK.version!==1||!Array.isArray(existingK.contributions)||!Array.isArray(existingK.processed)||!Array.isArray(existingK.conflicts)))throw Error('wissen.json hat ein unbekanntes Format. Die vorhandene Datei wird nicht überschrieben.');
    // Legacy browser data is migrated once, but switching to another folder does not copy old folder data.
    const legacyM=wasActive?[]:store.materials;
    const legacyC=wasActive?[]:cards,legacyT=wasActive?[]:aiTasks;
@@ -150,9 +162,13 @@ async function connect(handle){
      const oldAssessments=wasActive?[]:globalThis.oskarExportAssessments();
      globalThis.oskarImportAssessments(mergeById(existingA||[],oldAssessments));
    }
-   scheduled.clear();wrapPersistence();snapshot();await flush();
+   scheduled.clear();wrapPersistence();
+   window.oskarLocal.knowledgeData=existingK;
+   if(typeof globalThis.oskarImportKnowledge==='function')globalThis.oskarImportKnowledge(existingK);
+   if(typeof globalThis.oskarKnowledgeLoaded==='function')globalThis.oskarKnowledgeLoaded();
+   snapshot();await flush();
    // Browser data is erased only after the folder has been successfully written.
-   for(const key of [KEY,CARD_KEY,TASK_KEY,'oskar-lernstelle-assessments-v1','oskar-lernstelle-journeys-v1','oskar-subject-connections-v1'])localStorage.removeItem(key);
+   for(const key of [KEY,CARD_KEY,TASK_KEY,'oskar-lernstelle-assessments-v1','oskar-lernstelle-journeys-v1','oskar-subject-connections-v1','oskar-knowledge-wiki-v1'])localStorage.removeItem(key);
    savedHandle=handle;
    try{await handleDb('put',handle);}catch{}
    setStatus('Speicherort: '+handle.name+'/local-data. Schulmaterial, Aufgaben und Lernstand werden lokal gespeichert und nicht ins Git-Repository übertragen.','ready');
@@ -180,11 +196,12 @@ button.addEventListener('click',async()=>{
 });
 const firstField=$('parentMaterials')?.querySelector('.field');
 if(firstField)firstField.before(host);
-window.oskarLocal={isReady,saveOriginal,removeOriginal,flush,connect,snapshot};
+window.oskarLocal={isReady,saveOriginal,removeOriginal,readOriginal,flush,connect,snapshot,beginImport,finishImport};
 setStatus(hasFolderApi()?'Wähle einmal deinen geklonten Ordner oskar-lernstelle. Die App erstellt darin local-data und speichert dort Schuldateien und KI-Aufgaben.':'Lokaler Ordnerzugriff benötigt Chrome oder Edge auf dem Computer.');
 if(hasFolderApi()){
  handleDb('get').then(async handle=>{
    if(!handle||directory)return;
+   if(typeof handle.queryPermission!=='function'||typeof handle.getDirectoryHandle!=='function'){savedHandle=null;setStatus('Bitte den lokalen Repository-Ordner erneut auswählen.');return;}
    savedHandle=handle;
    try{if(await handle.queryPermission({mode:'readwrite'})==='granted')await connect(handle);else setStatus('Gespeicherter Ordner: '+handle.name+'. Bitte erneut Zugriff erlauben.');}
    catch(e){setStatus('Ordner bitte erneut verbinden: '+e.message,'error');}
