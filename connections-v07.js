@@ -64,6 +64,8 @@ function renderAiConnections(){
  if(!connectionConfig().ready){connectionStatus('Zwei Fächer sind bereit. Verbinde einmal den KI-Dienst in der Materialbibliothek, dann startet die Analyse beim Hinzufügen neuer Quellen automatisch.','settings');return;}
  connectionStatus('Neue Quellen warten auf die automatische KI-Analyse …');
 }
+let connectionsTimer=null;
+function scheduleAiConnections(){if(connectionsTimer)clearTimeout(connectionsTimer);connectionsTimer=setTimeout(()=>{connectionsTimer=null;autoAnalyzeConnections();},1800);renderAiConnections();}
 async function autoAnalyzeConnections(force=false){
  const sources=connectionSources(),signature=connectionSignature(sources);
  if(sources.length<2){renderAiConnections();return;}
