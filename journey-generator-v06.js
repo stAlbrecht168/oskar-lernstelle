@@ -22,13 +22,13 @@ function videoForJourney(j){const id=j.videoId;return id&&Object.prototype.hasOw
 function videoCandidate(j){const raw=journeyNormalize([j.title,j.guidingQuestion,j.connection].join(' '));return Object.entries(JOURNEY_VIDEOS).find(([,v])=>v.tags.some(t=>raw.includes(t)))?.[0]||'';}
 function createJourneyBuilder(){
  const section=document.createElement('section');section.id='aiJourneySection';section.className='ai-journey-area';
- section.innerHTML=`<div class="ai-journey-header"><div><h3>Deine eigenen Entdeckerreisen</h3><p>Verbinde Inhalte aus deinen Schulheften. Die KI schlägt eine Reise vor, du prüfst sie vor dem Spielen.</p></div><button type="button" id="openJourneyBuilder" class="btn btn-green btn-mini">Neue Reise planen</button></div>
+ section.innerHTML=`<div class="ai-journey-header"><div><h3>Weitere Entdeckerreisen</h3><p>Aus deinem Schulstoff entstehen neue Abenteuer.</p></div><button type="button" id="openJourneyBuilder" class="btn btn-outline btn-mini">Neue Reise erstellen</button></div>
  <div id="journeyBuilder" hidden><label for="journeyTopic">Was möchtest du entdecken?</label><input id="journeyTopic" maxlength="120" placeholder="Zum Beispiel Wasser, Diagramme oder Licht"><p class="small">Wähle zwei bis vier gespeicherte Schulquellen aus mindestens zwei Fächern. Es werden nur diese Texte an den KI-Dienst gesendet.</p><div id="journeySourcePicker" class="journey-source-picker"></div><button type="button" class="btn btn-green" id="createAiJourney">Reise mit KI vorschlagen</button><div id="journeyCreateStatus" role="status" aria-live="polite" class="small"></div><p class="small">Der HTTPS-KI-Dienst und dein privater Zugriffscode werden in der Materialbibliothek eingetragen. Der Code wird nicht gespeichert.</p></div>
  <div id="journeyPending" class="journey-pending"></div><div id="journeyApproved" class="journey-approved"></div>`;
- $('bridgeList').after(section);
+ $('discoveries').append(section);
  const overlay=document.createElement('div');overlay.id='aiJourneyOverlay';overlay.className='overlay';overlay.innerHTML=`<section class="dialog journey-dialog" role="dialog" aria-modal="true" aria-labelledby="aiJourneyTitle"><div class="dialog-head"><strong id="aiJourneyHeader">Entdeckerreise</strong><button type="button" class="close" id="closeAiJourney" aria-label="Reise schließen">×</button></div><div class="dialog-content ai-journey-scene" id="aiJourneyScene"></div></section>`;
  document.body.appendChild(overlay);
- $('openJourneyBuilder').addEventListener('click',()=>{const el=$('journeyBuilder');el.hidden=!el.hidden;renderJourneySources();if(!el.hidden)$('journeyTopic').focus();});
+ $('openJourneyBuilder').addEventListener('click',()=>{const el=$('journeyBuilder');el.hidden=!el.hidden;renderJourneySources();if(!el.hidden){if(typeof connectionsCache!=='undefined'&&connectionsCache?.connections?.length&&typeof planJourneyFromConnection==='function')planJourneyFromConnection(0);else $('journeyTopic').focus();}});
  $('createAiJourney').addEventListener('click',generateAiJourney);
  $('journeyPending').addEventListener('click',handleJourneyReview);
  $('journeyApproved').addEventListener('click',handleJourneyList);
