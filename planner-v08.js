@@ -85,7 +85,7 @@
     if (typeof hasSources === 'function' && hasSources(id)) {
       return typeof realQuestions === 'function' && realQuestions(id).length
         ? 'Mit Übungen aus deinem hochgeladenen Schulmaterial'
-        : 'Schulstoff vorhanden. KI-Aufgaben werden vorbereitet oder benötigen eine Verbindung.';
+        : 'KI bereitet deine Aufgaben vor. Inzwischen kannst du Beispielaufgaben üben.';
     }
     return 'Derzeit nur Demoaufgaben – Schulmaterial ergänzen';
   }
@@ -181,12 +181,7 @@
     if (!p.phase.duration) {openPlanner('plan');return;}
     closePlanner();
     chooseSubject(e.id);
-    if (typeof hasSources === 'function' && hasSources(e.id) && !realQuestions(e.id).length) {
-      toast('Aus dieser Quelle fehlen noch Lernaufgaben. Bitte prüfe den Upload-Status.');
-      if (typeof openMaterials === 'function') openMaterials();
-      else openParent();
-      return;
-    }
+    // Bis die KI fertig ist, startet das klar bezeichnete Beispieltraining direkt.
     if (p.phase.type === 'review' || p.phase.type === 'test') {
       var items = store.errors.filter(function (x) {return x.subject === e.id;})
         .map(findErrorQuestion).filter(Boolean).slice(0,6);
@@ -253,7 +248,7 @@
       plan.days===0 ? 'Heute Klassenarbeit' :
       'Klassenarbeit in '+plan.days+(plan.days===1?' Tag':' Tagen');
     var source=plan.phase.duration ? sourceHint(e.id) : 'Heute steht die Klassenarbeit im Mittelpunkt.';
-    var ready=typeof hasSources === 'function' && hasSources(e.id) && typeof realQuestions === 'function' && realQuestions(e.id).length===0;
+    var usingExamples=typeof realQuestions === 'function' && realQuestions(e.id).length===0;
     $('heroMeta').textContent='Deine Tagesmission · '+examInfo;
     $('heroTitle').textContent=e.icon+' '+e.name+': '+plan.phase.title;
     $('heroDesc').textContent=plan.phase.duration ?
@@ -262,7 +257,7 @@
     $('heroSource').textContent=source;
     $('heroDailyStatus').textContent=done?'Heute gelernt ✓':plan.phase.duration?'Heute noch offen':'Klassenarbeit';
     $('heroDailyStatus').classList.toggle('is-done',done);
-    $('heroBtn').textContent=plan.phase.duration ? (ready?'Material prüfen':done?'Noch eine Runde üben':'Tagesmission starten') : 'Zum Lernplan';
+    $('heroBtn').textContent=plan.phase.duration ? (done?'Noch eine Runde üben':usingExamples?'Mit Beispielen starten':'Tagesmission starten') : 'Zum Lernplan';
     $('heroBtn').disabled=false;
     renderPlannerDialog();
   }
