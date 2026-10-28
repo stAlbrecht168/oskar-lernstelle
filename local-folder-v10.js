@@ -49,7 +49,8 @@ async function readJson(name){
  try{
    const handle=await directory.getFileHandle(name);
    const text=await (await handle.getFile()).text(),data=JSON.parse(text);
-   if(!Array.isArray(data)&&(!data||typeof data!=='object'))throw Error('Ungültiges JSON');
+   if(data===null)return null;
+   if(!Array.isArray(data)&&typeof data!=='object')throw Error('Ungültiges JSON');
    return data;
  }catch(e){if(e.name==='NotFoundError')return null;throw new Error('Kann '+name+' nicht lesen: '+e.message);}
 }
@@ -80,7 +81,7 @@ function snapshot(){
  writeSnapshot(FS_FILES.progress,progress);
  if(typeof globalThis.oskarExportAssessments==='function')writeSnapshot(FS_FILES.assessments,globalThis.oskarExportAssessments());
  if(typeof journeyState==='object')writeSnapshot(FS_FILES.journeys,journeyState);
- if(typeof connectionsCache!=='undefined')writeSnapshot(FS_FILES.connections,connectionsCache);
+ if(typeof connectionsCache!=='undefined'&&connectionsCache!==null)writeSnapshot(FS_FILES.connections,connectionsCache);
 }
 async function flush(){
  await writeQueue;
