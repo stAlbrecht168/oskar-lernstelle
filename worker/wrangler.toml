@@ -1,0 +1,7 @@
+name = "oskar-lernstelle-ai"
+main = "index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://stalbrecht168.github.io"
+OPENAI_MODEL = "gpt-5-mini"
