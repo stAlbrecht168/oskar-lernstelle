@@ -21,12 +21,6 @@ const WATER_DEMO = {
   biology:{q:'Welcher Teil einer Pflanze nimmt hauptsächlich Wasser aus dem Boden auf?',a:['Die Wurzeln','Die Blütenblätter','Die Früchte','Die Samen'],correct:0,why:'Die Wurzeln nehmen Wasser aus dem Boden auf.'},
   geography:{q:'Welche Größe zeigt auf einer Wetterkarte, wie viel Regen an einem Ort gefallen ist?',a:['Die Niederschlagsmenge','Die Zeitzone','Die Einwohnerzahl','Die Landesgrenze'],correct:0,why:'Die Niederschlagsmenge beschreibt, wie viel Regen oder anderer Niederschlag an einem Ort gefallen ist.'}
 };
-const BRIDGE_TOPICS = [
-  {id:'water',name:'Wasser und Ressourcen',anchors:['wasser','niederschlag'],terms:{math:['liter','milliliter',' ml','bruch','menge','diagramm','anteil'],biology:['pflanz','wurzel','blatt','zelle','lebewesen','verdunst'],geography:['klima','regen','niederschlag','fluss','wasserkreislauf','trocken'],physics:['volumen','dichte','sieden','temperatur','verdunst'],values:['gerecht','ressourc','knapp','teilen']}},
-  {id:'data',name:'Daten und Diagramme',anchors:['diagramm','daten','statistik'],terms:{math:['diagramm','tabelle','säule','statistik','wert','zahl'],biology:['messung','zähl','wachstum','temperatur','beobacht'],geography:['bevölkerung','klima','temperatur','karte','niederschlag'],physics:['messwert','experiment','temperatur','zeit','messung'],history:['jahreszahl','bevölkerung','zeitstrahl','tabelle']}},
-  {id:'light',name:'Licht und Sehen',anchors:['licht','sonne','schatten'],terms:{math:['winkel','messen','länge','strahl'],biology:['auge','fotosynthese','pflanz','sehen','blatt'],physics:['reflexion','strahl','spiegel','schatten','licht'],geography:['sonne','tag','nacht','jahreszeit','himmelsrichtung'],art:['farbe','schatten','kontrast','perspektive']}},
-  {id:'time',name:'Zeit und Rhythmus',anchors:['zeit','dauer','stunde','minute'],terms:{math:['sekunde','minute','stunde','berechnen','umrechnen'],music:['takt','rhythmus','note','tempo'],history:['chronolog','jahr','zeitstrahl','epoche'],physics:['geschwindigkeit','messung','dauer','sekunde']}}
-];
 let journeyState={};
 try {const raw=JSON.parse(localStorage.getItem(JOURNEY_KEY)||'{}');if(raw&&typeof raw==='object'&&!Array.isArray(raw))journeyState=raw;}catch{}
 function saveJourneyState(){try{localStorage.setItem(JOURNEY_KEY,JSON.stringify(journeyState));}catch{toast('Entdeckerreise konnte nicht gespeichert werden.');}}
@@ -34,18 +28,6 @@ function journeyDone(id){return !!journeyState[id]?.done;}
 function setJourneyDone(id){if(journeyDone(id))return;journeyState[id]={...(journeyState[id]||{}),done:true};saveJourneyState();renderDiscoveries();}
 function journeyUnlocked(id){if(id==='start')return true;if(id==='video')return journeyDone('start');if(id==='final')return ['math','biology','geography'].filter(journeyDone).length>=2;return journeyDone('video');}
 function subjectMaterial(id){return store.materials.filter(m=>m.subject===id);}
-function sourceSentence(text,terms){const fragments=String(text).split(/[\n.!?]+/).map(s=>s.trim()).filter(Boolean);
- return fragments.find(s=>terms.some(k=>s.toLocaleLowerCase('de-DE').includes(k)))?.slice(0,190)||String(text).slice(0,160);
-}
-// Eine Brücke wird nur gefunden, wenn mindestens zwei echte Fachquellen
-// sowohl das gemeinsame Thema als auch spezifische Fachmerkmale enthalten.
-function subjectMatchesTopic(material,topic){const raw=String(material.text||'').toLocaleLowerCase('de-DE'),terms=topic.terms[material.subject];return !!terms&&topic.anchors.some(t=>raw.includes(t))&&terms.some(t=>raw.includes(t));}
-function findMaterialBridges(){return BRIDGE_TOPICS.flatMap(topic=>{
- const matches=store.materials.filter(m=>subjectMatchesTopic(m,topic));
- const bySubject=[...new Set(matches.map(m=>m.subject))];
- if(bySubject.length<2)return [];
- return [{topic,matches:bySubject.map(id=>matches.find(m=>m.subject===id))}];
-});}
 function topicQuestion(id,topic){const words=topic==='water'?['wasser','pflanz','wurzel','regen','niederschlag','liter',' ml']:BRIDGE_TOPICS.find(t=>t.id===topic)?.anchors||[];
  return realQuestions(id).find(q=>words.some(w=>(q.q+' '+q.why).toLocaleLowerCase('de-DE').includes(w)))||null;
 }
@@ -62,14 +44,14 @@ function createDiscoveries(){
  <div class="journey-progress"><div class="journey-progress-label"><strong id="journeyProgressText">0 von 6 Stationen</strong><span>Du bestimmst den Weg</span></div><div class="journey-progress-track"><div id="journeyProgressFill"></div></div></div>
  <div id="journeyMap" class="journey-map" aria-label="Stationen der Entdeckerreise"></div>
  <div class="journey-footnote">Inspiration: BBC Tunnels. Das Video ist ein thematischer Einstieg, kein Beleg für die Aufgaben. Inhalte vor dem Ansehen altersgerecht prüfen.</div>
- <div class="bridge-head"><h3>Verbindungen aus deinem Schulstoff</h3><p>Wenn du Material aus mindestens zwei Fächern hinzufügst, zeigt die App mögliche Gemeinsamkeiten samt Quellentext.</p></div>
+ <div class="bridge-head"><h3>Verbindungen aus deinem Schulstoff</h3><p>Die KI untersucht Quellen aus unterschiedlichen Fächern automatisch und schlägt konkrete Verbindungen mit Quellentexten vor. Dazu muss der KI-Dienst verbunden sein.</p></div>
  <div id="bridgeList" class="bridge-list"></div>`;
  $('learn').after(panel);
  const overlay=document.createElement('div');overlay.className='overlay';overlay.id='journeyOverlay';overlay.setAttribute('role','presentation');
  overlay.innerHTML='<section class="dialog journey-dialog" role="dialog" aria-modal="true" aria-labelledby="journeySceneTitle"><div class="dialog-head"><strong id="journeySceneHead">Entdeckerreise</strong><button type="button" class="close" id="closeJourney" aria-label="Entdeckerreise schließen">×</button></div><div class="dialog-content journey-scene" id="journeySceneBody"></div></section>';
  document.body.appendChild(overlay);
  $('journeyMap').addEventListener('click',e=>{const b=e.target.closest('[data-journey]');if(b)openJourney(b.dataset.journey);});
- $('bridgeList').addEventListener('click',e=>{const b=e.target.closest('[data-mix]');if(b)startBridgeMix(b.dataset.mix);});
+ // Die Interaktionen für fachübergreifende KI-Verbindungen steuert connections-v07.js.
  $('closeJourney').addEventListener('click',closeJourney);
  overlay.addEventListener('click',e=>{if(e.target===overlay)closeJourney();});
  $('journeySceneBody').addEventListener('click',onJourneyAction);
@@ -85,14 +67,8 @@ function renderDiscoveries(){
  return `<div class="journey-node ${complete?'is-done':unlocked?'is-open':'is-locked'}">
  <div class="journey-node-number">${i+1}</div><button type="button" data-journey="${s.id}" ${unlocked?'':'disabled'} aria-label="${noHtml(s.name)}: ${status}"><span class="journey-node-icon">${complete?'✓':s.icon}</span><span class="journey-node-copy"><strong>${noHtml(s.name)}</strong><small>${status}${s.subject?' · '+noHtml(subject(s.subject).name):''}</small></span><span aria-hidden="true">${unlocked?'›':'🔒'}</span></button></div>`;
  }).join('');
- const bridges=findMaterialBridges();
- $('bridgeList').innerHTML=bridges.length?bridges.map(({topic,matches})=>{
- const eligible=matches.filter(m=>topicQuestion(m.subject,topic.id));
- const canMix=eligible.length>=2;
- return `<div class="bridge-card"><strong>🔗 ${noHtml(topic.name)}</strong><p>Diese Materialien haben eine mögliche fachliche Verbindung. Bitte inhaltlich prüfen.</p>
- <div class="bridge-sources">${matches.map(m=>`<div><b>${noHtml(subject(m.subject)?.name||m.subject)} · ${noHtml(m.title)}</b><blockquote>„${noHtml(sourceSentence(m.text,topic.anchors))}“</blockquote></div>`).join('')}</div>
- <button class="btn btn-outline btn-mini" data-mix="${topic.id}" ${canMix?'':'disabled'}>${canMix?'Fächer-Mix starten':'Noch passende Quizfragen freigeben'}</button></div>`;
- }).join(''):'<div class="bridge-empty">Noch keine belegbare Verbindung entdeckt. Füge zum Beispiel Material zu Wasser in Mathe und Biologie hinzu. Unbelegte Verknüpfungen werden nicht vorgeschlagen.</div>';
+ if(typeof renderAiConnections==='function')renderAiConnections();
+ else $('bridgeList').textContent='KI-Verbindungen werden geladen.';
 }
 function openJourney(stepId){if(!journeyUnlocked(stepId)){toast('Entdecke zuerst die vorherigen Stationen.');return;}
  const step=WATER_JOURNEY.steps.find(s=>s.id===stepId);if(!step)return;
@@ -135,12 +111,6 @@ function onJourneyAction(e){
  if(!journeyDone('final')){store.xp+=15;persist();}
  setJourneyDone('final');saveJourneyState();closeJourney();render();toast('Entdeckerreise abgeschlossen. +15 XP');
  }
-}
-function startBridgeMix(topicId){const bridge=findMaterialBridges().find(x=>x.topic.id===topicId);if(!bridge)return;
- const items=bridge.matches.map(m=>topicQuestion(m.subject,topicId)).filter(Boolean).slice(0,6);
- if(items.length<2){toast('Für beide Fächer müssen passende Aufgaben freigegeben sein.');return;}
- session={id:bridge.matches[0].subject,level:0,items,index:0,chosen:null,checked:false,correctCount:0,review:true,custom:true};
- $('lessonOverlay').classList.add('show');document.body.style.overflow='hidden';renderQuestion();
 }
 const JOURNEY_STYLES=`
 .discover-panel{scroll-margin-top:92px}.journey-intro{display:flex;align-items:center;gap:12px;justify-content:space-between;border-radius:21px;padding:20px 22px;background:linear-gradient(125deg,#e8f8fe,#f1eefd);margin-bottom:17px}
