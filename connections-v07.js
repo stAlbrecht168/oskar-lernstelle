@@ -86,7 +86,7 @@ async function autoAnalyzeConnections(force=false){
    // Keine alten Ergebnisse auf neuere, zwischenzeitlich gespeicherte Materialien anwenden.
    if(connectionSignature(connectionSources())===signature){
      connectionsCache={signature,connections:clean,updatedAt:new Date().toISOString()};
-     localStorage.setItem(CONNECTIONS_KEY,JSON.stringify(connectionsCache));
+     if(window.oskarLocal?.isReady())window.oskarLocal.snapshot();else localStorage.setItem(CONNECTIONS_KEY,JSON.stringify(connectionsCache));
    }else connectionsQueued=true;
  }catch(error){
    if(connectionSignature(connectionSources())===signature){
