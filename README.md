@@ -13,6 +13,10 @@ Das Second Brain ist derzeit kein separater Webdienst. Die Wissensbasis und die 
 
 Lern-App für Oskar, 5. Klasse Gymnasium in Niedersachsen. Das Interface orientiert sich an motivierenden, kleinen Duolingo-Lektionen, die Inhalte stammen aus selbst hinzugefügten Schulmaterialien.
 
+## Lernpfad-Fortschritt statt doppelter Statistik
+
+Die separate Karte **Dein Fortschritt** in der rechten Informationsspalte wurde entfernt. XP, Lerntage in Folge und die Zahl absolvierter Levels bleiben in der Kopfzeile sichtbar. Der **Fortschritt des aktuell gewählten Schulfachs** wird direkt unter der Fächerauswahl in **Dein Lernpfad** angezeigt: mit der Beschriftung „Lernpfad geschafft“, Prozentwert und Balken. Der Prozentwert basiert auf den drei Levels dieses Fachs und aktualisiert sich beim Fachwechsel oder nach Abschluss einer Lektion. Die rechte Spalte enthält nur noch Klassenarbeitstermine und Erklärvideos.
+
 ## Sofort lernen und offene Lernfläche
 
 Die Lernstelle verlangt **keine manuelle Aufgabenfreigabe**, bevor Oskar beginnen kann. Neue, anhand des Schultexts belegte KI-Fragen und Wissenskarten werden nach dem Upload direkt in den Fachlevels verwendet und bleiben als KI-generiert erkennbar. Bereits vorhandene, anhand der Originalquelle validierbare KI-Entwürfe werden ebenfalls aktiviert. Manuelle Entwürfe ohne Beleg bleiben unangetastet. KI-generierte Inhalte können Fehler enthalten und dürfen bei Bedarf im erweiterten Materialdialog kontrolliert werden.
