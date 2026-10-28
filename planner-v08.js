@@ -171,12 +171,14 @@
     finishBeforePlanner();
     if (data && session && session.done) recordFinishedLesson(data);
   };
+  window.oskarRegisterJourney = function (journeyId) {
+    logLearning({date:todayKey(),subject:'journey',journeyId:String(journeyId||'').slice(0,100),correct:0,total:0,kind:'journey',timestamp:new Date().toISOString()});
+  };
   var previousJourneyDone = typeof setJourneyDone === 'function' ? setJourneyDone : null;
   if (previousJourneyDone) {
     setJourneyDone = function (id) {
-      var wasDone = typeof journeyDone === 'function' && journeyDone(id);
       previousJourneyDone(id);
-      if (id === 'final' && !wasDone) logLearning({date:todayKey(),subject:'journey',correct:0,total:0,kind:'journey',timestamp:new Date().toISOString()});
+      if (id === 'final') window.oskarRegisterJourney('wasserreise');
     };
   }
 
