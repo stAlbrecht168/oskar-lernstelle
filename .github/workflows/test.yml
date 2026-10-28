@@ -31,3 +31,5 @@ jobs:
           node --check connections-v07.js
           node --check auto-material-v09.js
           node --check worker/index.js
+      - name: UX-Hauptmission und Seitenhierarchie prüfen
+        run: node --test tests/ux-primary-mission.test.mjs
