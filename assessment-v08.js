@@ -117,17 +117,17 @@ el('assSave').addEventListener('click',()=>{
  if(!save()){assessments.pop();return;}
  for(const key of ['assGrade','assTitle','assFeedback','assTopics','assText','assFile'])el(key).value='';
  el('assStatus').textContent='Gespeichert. Falls konkrete Korrekturhinweise vorhanden sind, kannst du die KI-Auswertung starten.';
- paint();
+ render();
 });
 panel.addEventListener('click',async e=>{
  const button=e.target.closest('button');if(!button)return;
  if(button.dataset.assPractice){learn(button.dataset.assPractice,button.dataset.assTopic,button.dataset.assKind);return;}
  const id=button.dataset.assAnalyze||button.dataset.assDelete||button.dataset.assApprove||button.dataset.assDismiss;
  if(!id)return;const record=assessments.find(x=>x.id===id);if(!record)return;
- if(button.dataset.assDelete){if(confirm('Diese Klassenarbeit und ihre Analyse endgültig aus diesem Browser löschen?')){assessments=assessments.filter(r=>r!==record);save();paint();}return;}
+ if(button.dataset.assDelete){if(confirm('Diese Klassenarbeit und ihre Analyse endgültig aus diesem Browser löschen?')){assessments=assessments.filter(r=>r!==record);save();render();}return;}
  if(button.dataset.assApprove||button.dataset.assDismiss){
   const visible=(record.areas||[]).filter(x=>x.status!=='dismissed'),area=visible[Number(button.dataset.areaIndex)];
-  if(!area)return;area.status=button.dataset.assApprove?'approved':'dismissed';save();paint();return;
+  if(!area)return;area.status=button.dataset.assApprove?'approved':'dismissed';save();render();return;
  }
  if(button.dataset.assAnalyze){
   const endpoint=el('aiEndpoint').value.trim().replace(/\/+$/,''),token=el('aiToken').value.trim();
@@ -139,7 +139,7 @@ panel.addEventListener('click',async e=>{
   try{
    const response=await fetch(url.href.replace(/\/$/,'')+'/analyze-assessment',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({subject:subject(record.subject).name,text:record.text,feedback:record.feedback})});
    const data=await response.json();if(!response.ok)throw new Error(data.error||'KI-Auswertung fehlgeschlagen.');
-   record.areas=(record.areas||[]).filter(x=>x.status==='approved').concat((data.areas||[]).map(a=>({...a,status:'draft'})));save();paint();
+   record.areas=(record.areas||[]).filter(x=>x.status==='approved').concat((data.areas||[]).map(a=>({...a,status:'draft'})));save();render();
    el('assStatus').textContent=data.areas?.length?'Vorschläge erhalten. Bitte anhand der Korrekturen prüfen und übernehmen.':'Keine eindeutigen Lernlücken erkennbar. Ergänze konkrete Korrekturhinweise.';
   }catch(err){el('assStatus').textContent=err.message||'KI-Dienst antwortet nicht.';}
   finally{button.disabled=false;button.textContent='KI auswerten';}
