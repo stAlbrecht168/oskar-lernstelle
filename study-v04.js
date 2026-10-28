@@ -83,6 +83,11 @@ function renderAiTasks(){const c=$('aiTaskList');if(!c)return;const current=aiTa
 $('aiTaskList').addEventListener('click',e=>{const b=e.target.closest('[data-task-approve],[data-task-delete]');if(!b)return;const index=Number(b.dataset.taskApprove??b.dataset.taskDelete),t=aiTasks[index];if(!t)return;
  if(b.dataset.taskDelete!==undefined)aiTasks.splice(index,1);else if(t.status==='approved')t.status='draft';else{const container=b.closest('[data-task]');const question=container.querySelector('[data-tq]').value.trim(),options=[...container.querySelectorAll('[data-opt]')].map(x=>x.value.trim()),explanation=container.querySelector('[data-explanation]').value.trim(),correctIndex=Number(container.querySelector('[data-correct]').value);if(question.length<8||options.some(x=>x.length<1)||new Set(options.map(x=>x.toLowerCase())).size!==options.length||!options[correctIndex]||explanation.length<10){toast('Bitte Frage, eindeutige Antworten und Erklärung prüfen.');return;}Object.assign(t,{question,options,correctIndex,explanation,status:'approved',reviewedByHuman:true});}
  saveTasks();render();});
+// Der Hauptlernweg ist ohne Freigabeschritte immer direkt startbar.
+$('customPracticeBtn').addEventListener('click',event=>{
+ event.stopImmediatePropagation();
+ startLesson(selected,0);
+},true);
 function openMaterials(tab='materials'){openParent();setParentTab(tab);$('materialSubject').value=selected;}
 // Die Materialbibliothek bleibt im Dialog. Keine zweite, dauerhaft sichtbare Verwaltungsfläche.
 const library=$('parentOverlay').querySelector('.dialog');
