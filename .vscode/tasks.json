@@ -1,0 +1,66 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lern-App lokal starten",
+      "type": "shell",
+      "command": "python3",
+      "args": [
+        "-u",
+        "-m",
+        "http.server",
+        "8000",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "detail": "Lokale Vorschau: http://127.0.0.1:8000 (nur auf diesem Computer)"
+    },
+    {
+      "label": "Frontend und Speicher prüfen",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "--test",
+        "tests/ux-primary-mission.test.mjs",
+        "tests/ux-frictionless-lessons.test.mjs",
+        "tests/material-music-recovery.test.mjs",
+        "tests/local-repository-storage.test.mjs"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Automatisierte Tests mit synthetischen Daten"
+    },
+    {
+      "label": "KI-Worker testen",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "test"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/worker"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "Tests für den Cloudflare Worker ohne produktive API-Aufrufe"
+    }
+  ]
+}
