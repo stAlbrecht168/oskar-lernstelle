@@ -1,23 +1,38 @@
-# Optionaler KI-Dienst (Cloudflare Worker)
+# KI-Aufgabendienst einrichten
 
-Die öffentliche GitHub Page **enthält keinen** API-Schlüssel. Dieses Gateway kann nach eigener Einrichtung über die OpenAI Responses API bis zu zehn Vorschläge aus einem Quelltext generieren, mit **wörtlichen Quellenbelegen**. Vorschläge bleiben Entwürfe, bis sie im Elternbereich geprüft werden.
+Die Lernstelle läuft auf GitHub Pages. Die KI-Anbindung nutzt einen separaten Cloudflare Worker, damit der OpenAI API-Schlüssel nie im öffentlichen Browser oder Repository steht. Er erzeugt Vorschläge für Wissenskarten, Auswahlfragen, Richtig-oder-falsch-Fragen und Lückentexte. Jede Frage wird durch ein wörtliches Zitat aus der hochgeladenen Quelle verankert. Die Belege müssen vor der Freigabe fachlich geprüft werden.
 
-## Bereitstellung (optional)
+## Bereitstellung über GitHub Actions
 
-1. Bei Cloudflare anmelden und Wrangler installieren bzw. mit `npx wrangler` starten.
-2. Im Verzeichnis `worker` ausführen:
+1. Erstelle ein Cloudflare-Konto und einen API-Token mit der Berechtigung, Workers zu bearbeiten. Kopiere die Account-ID aus dem Dashboard.
+2. Erstelle einen separaten OpenAI API-Schlüssel mit Ausgabenlimit. Aktiviere ggf. Nutzungsbudget/Monitoring. Der ChatGPT-Plus-Tarif enthält keine API-Nutzung.
+3. Hinterlege unter [GitHub Actions Secrets](https://github.com/stAlbrecht168/oskar-lernstelle/settings/secrets/actions) vier Repository Secrets: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `OPENAI_API_KEY` und `OSKAR_ACCESS_TOKEN`. Der letzte Wert ist ein selbst erzeugtes langes Zufallspasswort; **niemals** hier oder im Chat veröffentlichen.
+4. Öffne [Actions > KI-Dienst bereitstellen](https://github.com/stAlbrecht168/oskar-lernstelle/actions/workflows/deploy-worker.yml) und starte `Run workflow`. Der Workflow testet den Worker, deployt ihn und setzt die OpenAI- und Zugriffsschlüssel als private Worker Secrets.
+5. Übernimm die `.workers.dev`-Adresse aus dem Workflow-Protokoll. Trage sie in der **Materialbibliothek** der Lernstelle in das HTTPS-Feld ein. Dort gibt es einen Button **Verbindung prüfen**. Den privaten Zugriffscode eingeben, bevor du auf **KI-Vorschläge** bei einer Materialquelle klickst.
 
-   ```sh
-   npx wrangler login
-   npx wrangler secret put OPENAI_API_KEY
-   npx wrangler secret put ACCESS_TOKEN
-   npx wrangler deploy
-   ```
+Es gibt **keinen automatischen Cloudflare-Deploy**, solange die vier Zugangsdaten fehlen. Die GitHub Page ist ohne den Worker weiterhin mit lokalem Kartenmodus verwendbar.
 
-   `ACCESS_TOKEN` muss ein langes zufälliges, privates Passwort sein, das nicht in ein Repository gehört.
-3. In der Lernstelle im Elternbereich die veröffentlichte Worker-Adresse (z. B. `https://oskar-lernstelle-ai.<account>.workers.dev`) und den Zugriffscode eingeben. Die Seite sendet Lerntext nur bei Klick auf **KI-Vorschläge**.
-4. Die Service-Nutzung kann Kosten verursachen. API-Abrechnung, Volumenbeschränkungen und Zugang müssen vor dem öffentlichen Einsatz konfiguriert werden.
+## Datenschutz und Grenzen
 
-**Sicherheit:** Das ist eine vorläufige, passwortgeschützte Familienlösung, keine produktionsreife Nutzerverwaltung. Cloudflare/der KI-Anbieter verarbeitet den übertragenen Text. Keine privaten Schülerdaten, Fotos oder kompletten Schulunterlagen ohne ausdrückliche Entscheidung über Datenschutz übertragen. Für größere Nutzerkreise echte Authentifizierung, Rate Limiting und Missbrauchsschutz nachrüsten.
+Das private Familienpasswort ist ein einfacher Zugangsschutz für eine kleine Nutzergruppe und ersetzt keine Benutzerverwaltung oder per IP limitierte Abrechnung. Browser-Origin-Prüfung ist keine Authentifizierung, daher wird zusätzlich ein Zugangscode verlangt. Schütze insbesondere API-Schlüssel, setze Quoten und verwende nur Texte, die du an den KI-Anbieter senden darfst. Uploads werden in der Web-App lokal ausgelesen und nur beim aktiven Klick auf KI-Vorschläge als Text übertragen. Die API wird mit `store:false` aufgerufen. Dies garantiert nicht, dass keinerlei Verarbeitung oder Logging beim Anbieter stattfindet.
 
-Das Gateway kontrolliert, dass die vom Modell ausgegebenen Textbelege im gelieferten Quelltext vorkommen. Damit ist **keine vollständige fachliche Richtigkeit garantiert**; die Karten müssen geprüft werden.
+Der Worker prüft automatisch, ob Belegzitate im übergebenen Text auftauchen. Eine mathematische/fachliche Prüfung der generierten Antworten findet nicht statt. Die Freigabe in der Materialbibliothek ist verpflichtend.
+
+## Tests
+
+```bash
+cd worker
+npm test
+```
+
+## Manuelle Einrichtung alternativ
+
+```bash
+cd worker
+npx wrangler login
+npx wrangler deploy
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler secret put ACCESS_TOKEN
+```
+
+Der Worker antwortet an `/health` mit `ok:true` und `configured:true`, wenn beide Secrets vorhanden sind. Diese Diagnose verrät keine geheimen Werte.
