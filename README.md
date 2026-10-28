@@ -9,9 +9,57 @@
 - **Lerntracking:** [Lernübersicht öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#tracking)
 - **KI-Dienst einrichten:** [Anleitung für den Cloudflare Worker](worker/README.md)
 
-Das Second Brain ist derzeit kein separater Webdienst. Die Wissensbasis und die Materialverwaltung sind in die Lern-App integriert. Beide Webadressen funktionieren, sobald GitHub Pages für dieses Repository erfolgreich veröffentlicht wurde. Persönliche Schulmaterialien verbleiben im lokalen Browser und sind nicht im öffentlichen Repository gespeichert.
+Das Second Brain ist derzeit kein separater Webdienst. Die Wissensbasis und die Materialverwaltung sind in die Lern-App integriert. Beide Webadressen funktionieren, sobald GitHub Pages für dieses Repository erfolgreich veröffentlicht wurde. Schulmaterialien werden nach Auswahl des lokalen Repositories in dessen ignoriertem Ordner `local-data/` gespeichert und nicht im öffentlichen Git-Repository veröffentlicht.
 
 Lern-App für Oskar, 5. Klasse Gymnasium in Niedersachsen. Das Interface orientiert sich an motivierenden, kleinen Duolingo-Lektionen, die Inhalte stammen aus selbst hinzugefügten Schulmaterialien.
+
+## Weiterentwicklung in VS Code mit Codex
+
+Du kannst die Lernstelle direkt im **lokal geklonten GitHub-Repository** weiterentwickeln. Installiere die [OpenAI Codex-Erweiterung für VS Code](https://marketplace.visualstudio.com/items?itemName=OpenAI.chatgpt), öffne den Projektordner in VS Code und melde dich in der Erweiterung mit deinem ChatGPT-Konto an. Codex berücksichtigt die Projektregeln aus [AGENTS.md](AGENTS.md).
+
+```bash
+cd /pfad/zu/oskar-lernstelle
+git pull
+code .
+```
+
+Codex kann den Quellcode bearbeiten und die Tests ausführen. Vor einem Push Änderungen und Testergebnisse prüfen. Beispiel:
+
+```bash
+node --test tests/*.test.mjs
+cd worker && npm test
+cd ..
+git status
+```
+
+Die Lern-App kann lokal über einen kleinen HTTP-Server bzw. eine VS-Code-Live-Server-Erweiterung ausprobiert werden. Der Cloudflare-KI-Worker erlaubt standardmäßig nur die veröffentlichte GitHub-Pages-Origin. Für KI-Tests auf `localhost` muss eine ausdrücklich autorisierte Entwicklungs-Origin eingerichtet werden. Ohne diese Einschränkung zu ändern, sollte der KI-Aufruf weiterhin in der veröffentlichten App getestet werden.
+
+## Privater Datenordner im geklonten Projekt
+
+Im Materialdialog wählst du einmal **Lokales Repository auswählen** und anschließend den Hauptordner deines geklonten `oskar-lernstelle`. Die App erstellt darin automatisch:
+
+```text
+oskar-lernstelle/
+├── index.html
+├── worker/
+├── AGENTS.md
+└── local-data/
+    ├── materialien.json
+    ├── lernkarten.json
+    ├── aufgaben.json
+    ├── lernstand.json
+    ├── klassenarbeiten.json
+    ├── entdeckerreisen.json
+    ├── fachverbindungen.json
+    └── Originaldateien/
+        ├── music/
+        ├── math/
+        └── ...
+```
+
+**`local-data/` wird durch `.gitignore` vom Git-Commit ausgeschlossen.** Schulmaterial, Noten, Lernstand und Originaldateien bleiben auf deinem Computer. Die App benötigt in Chrome oder Edge deine Erlaubnis für den Ordnerzugriff. Die auf GitHub Pages veröffentlichte Web-App kann nicht selbständig auf beliebige Ordner zugreifen.
+
+Beim erstmaligen Verbinden übernimmt die App bereits im selben Browser gespeicherte Materialien in den neuen Ordner. Sie entfernt die alten Browser-Daten erst nach erfolgreichem Schreiben. Nicht zuvor gespeicherte Uploads lassen sich nicht nachträglich übernehmen. Der Ordner ist kein automatischer Cloud-Sync. Für automatische **KI-Aufgabengenerierung** werden ausgelesene Texte weiterhin über den privaten Cloudflare-Worker an OpenAI gesendet.
 
 ## Lernpfad-Fortschritt statt doppelter Statistik
 
