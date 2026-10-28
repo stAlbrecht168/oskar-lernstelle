@@ -4,11 +4,25 @@
 
 - **Lern-App:** [Oskars Lernstelle öffnen](https://stalbrecht168.github.io/oskar-lernstelle/)
 - **Second Brain:** [Materialbibliothek und Wissensbasis öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#second-brain)
+- **Lernplan:** [14-Tage-Lernplan öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#lernplan)
+- **Lerntracking:** [Lernübersicht öffnen](https://stalbrecht168.github.io/oskar-lernstelle/#tracking)
 - **KI-Dienst einrichten:** [Anleitung für den Cloudflare Worker](worker/README.md)
 
 Das Second Brain ist derzeit kein separater Webdienst. Die Wissensbasis und die Materialverwaltung sind in die Lern-App integriert. Beide Webadressen funktionieren, sobald GitHub Pages für dieses Repository erfolgreich veröffentlicht wurde. Persönliche Schulmaterialien verbleiben im lokalen Browser und sind nicht im öffentlichen Repository gespeichert.
 
 Lern-App für Oskar, 5. Klasse Gymnasium in Niedersachsen. Das Interface orientiert sich an motivierenden, kleinen Duolingo-Lektionen, die Inhalte stammen aus selbst hinzugefügten Schulmaterialien.
+
+## Klausurbezogener Tagesplan und Lerntracking (Version 0.8)
+
+Die Startseite zeigt **Deine Tagesmission** direkt unter der großen Lernmission. Der Lernplan öffnet sich als Dialog, damit die Oberfläche übersichtlich bleibt.
+
+- **Täglich automatisch planen:** pro Tag eine kurze Hauptmission von ca. 10–15 Minuten, abhängig vom nächsten hinterlegten Klausurtermin. Bei mehreren anstehenden Arbeiten wird das nähere Datum priorisiert. Die App bietet Grundlagen, Anwenden, Fehlertraining und einen kurzen Wissenscheck am Vortag an. Der Plan wird beim Öffnen neu aus den aktuellen Terminen berechnet.
+- **Termine bearbeiten:** im Dialog unter **Klausurtermine**. Die vorhandenen Beispieltermine sind vorbelegt und müssen anhand des echten Schulplans geprüft werden. Biologie hat derzeit noch kein Datum. Ein leeres Feld ist zulässig.
+- **Erledigung zuverlässig erfassen:** Eine Einheit zählt erst, wenn das Quiz bis zum Ergebnis abgeschlossen wurde (nicht beim Öffnen oder Klicken auf eine Antwort). Im Bereich **Lerntracking** gibt es 14 Tage Rückblick, die Zahl tatsächlicher Lerntage, die aktuelle Serie, absolvierte Lerneinheiten und den Prozentsatz richtiger Antworten aus freigegebenem Schulstoff. Ältere Lerntage bleiben sichtbar, enthalten aber keine rückwirkend erfundenen Einzelwerte.
+- **Echte Inhalte statt Platzhalter:** Sobald Material eines Faches hochgeladen ist, sollen die KI-Vorschläge fachlich geprüft und freigegeben werden. Gibt es dann noch keine freigegebenen Aufgaben, wird die Tagesmission bewusst nicht mit unpassenden Demoaufgaben gefüllt.
+- **Datenschutz und Grenzen:** Tracking und Termine liegen im lokalen Browser. Auf einem anderen Gerät fehlt der Stand, solange er nicht mit einem privaten JSON-Backup übertragen wird. Es gibt keine automatische Elternbenachrichtigung, Synchronisierung, serverseitige Anwesenheitskontrolle oder Garantie, dass Oskar tatsächlich aufmerksam lernt. Kurzes gemeinsames Feedback nach dem Training bleibt sinnvoll.
+
+**Beispiel ab 28. Oktober 2026**, auf Grundlage der bislang eingetragenen Termine: Musik (02.11.) hat zunächst Priorität, am 28./29.10. Aufgaben anwenden, am 30./31.10. die Sicherheit prüfen und Fehler wiederholen, am 01.11. einen kurzen Wissenscheck. Anschließend rückt Kunst (05.11.) stärker in den Fokus. Bei geänderten Terminen werden die Aufgaben neu verteilt. Für eine echte Klausurvorbereitung müssen die zu prüfenden Themen als Schulmaterial hinterlegt sein.
 
 ## Materialbibliothek und Lernpfad
 
