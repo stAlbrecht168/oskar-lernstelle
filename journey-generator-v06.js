@@ -163,7 +163,7 @@ function handleJourneyPlayer(e){const choice=e.target.closest('[data-aichoice]')
   const reflection=$('aiJourneyReflection').value.trim();if(reflection.length<12){toast('Schreib noch kurz, was du entdeckt hast.');return;}
   const all=journeyProgress();const old=all[j.id]||{};all[j.id]={step:steps.length-1,reflection,completed:true};journeyState.aiProgress=all;
   if(!old.completed){store.xp+=15;persist();}
-  saveAiJourney();closeAiJourney();render();toast(old.completed?'Reise wiederholt.':'Entdeckerreise geschafft: +15 XP');
+  saveAiJourney();if(typeof window.oskarRegisterJourney==='function')window.oskarRegisterJourney(j.id);closeAiJourney();render();toast(old.completed?'Reise wiederholt.':'Entdeckerreise geschafft: +15 XP');
  }
 }
 const aiJourneyStyles=`
