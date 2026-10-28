@@ -98,6 +98,7 @@ function vettedCards(raw,m){
  return out.slice(0,10);
 }
 async function analyzeUploadedMaterial(m){
+ if(!window.oskarLocal?.isReady())return;
  const connection=workerConnection();
  if(!connection.ready){
   m.analysisState='waiting';persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
@@ -115,9 +116,10 @@ async function analyzeUploadedMaterial(m){
   if(!tasks.length&&newCards.length<2)throw Error('Die Datei enthält zu wenig eindeutige Aussagen für ein Quiz. Bitte eine zusätzliche oder besser lesbare Seite hochladen.');
   aiTasks=aiTasks.filter(t=>t.sourceId!==m.id).concat(tasks);
   cards=cards.filter(c=>c.sourceId!==m.id).concat(newCards);
-  if(!saveTasks()||!persistCards())throw Error('Der lokale Browser-Speicher ist voll.');
+  if(!saveTasks()||!persistCards())throw Error('Die Aufgaben konnten nicht gespeichert werden.');
+  await window.oskarLocal.flush();
   m.analysisState='ready';m.analysisCount=tasks.length+newCards.length;m.analysisError='';
-  persist();render();displayAutoHistory();
+  persist();await window.oskarLocal.flush();render();displayAutoHistory();
   setAutoStatus('Fertig! '+tasks.length+' Übungen und '+newCards.length+' Lernkarten für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
  }catch(err){
@@ -128,7 +130,7 @@ async function analyzeUploadedMaterial(m){
  }
 }
 async function processPendingMaterials(){
- if(autoUploadBusy||autoAnalysisBusy)return;
+ if(!window.oskarLocal?.isReady()||autoUploadBusy||autoAnalysisBusy)return;
  const connection=workerConnection();
  if(!connection.ready){displayAutoHistory();return;}
  autoAnalysisBusy=true;
@@ -157,6 +159,7 @@ async function readScannedPdf(file){
  return extracted;
 }
 async function ingestSchoolFile(file){
+ if(!window.oskarLocal?.isReady()){setAutoStatus('Bitte zuerst einen lokalen Ordner auswählen.','waiting');return;}
  if(autoUploadBusy)return;
  if(!file)return;
  if(!subject($('materialSubject').value)){setAutoStatus('Bitte zuerst ein Schulfach auswählen.','failed');return;}
@@ -172,8 +175,10 @@ async function ingestSchoolFile(file){
   text=String(text||'').trim();
   if(text.length<30)throw Error('Zu wenig lesbarer Text. Verwende eine gut lesbare PDF- oder Fotoaufnahme mit mindestens 30 Zeichen.');
   if(store.materials.length>=100)throw Error('Maximale Zahl von Quellen erreicht. Bitte alte Quellen entfernen oder ein Backup anlegen.');
-  const m={id:uniqueId(),subject:subjectId,title:file.name.slice(0,100),text:text.slice(0,30000),created:new Date().toISOString(),analysisState:'waiting'};
-  store.materials.push(m);persist();render();displayAutoHistory();
+  const id=uniqueId();
+  const originalPath=await window.oskarLocal.saveOriginal(file,id,subjectId);
+  const m={id,subject:subjectId,title:file.name.slice(0,100),originalPath,text:text.slice(0,30000),created:new Date().toISOString(),analysisState:'waiting'};
+  store.materials.push(m);persist();await window.oskarLocal.flush();render();displayAutoHistory();
   setAutoStatus('Datei gespeichert. Bereite die Lernaufgaben vor …','working');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
   await analyzeUploadedMaterial(m);
