@@ -30,3 +30,16 @@ Dann `http://localhost:8000` öffnen. Für den Worker: `cd worker && npm test`.
 - Kostenkontrolle und Rate Limiting im Backend
 - automatische Auswahl von Lernvideos passend zum Material
 - bessere Unterstützung gescannter PDFs und Diagramme in Aufgaben
+
+## Fachübergreifende Entdeckerreisen, Version 0.5
+
+- Eine erste kuratierte Geschichte zu Wasser führt über sechs Stationen und verwendet ein offiziell verlinktes Simplicissimus-Video als optionalen Einstieg. Die beispielhaften Fachfragen sind als Beispiel markiert, sobald echte Quellen vorhanden sind, haben passende freigegebene Fragen Vorrang.
+- Mathe, Biologie und Erdkunde können in beliebiger Reihenfolge erkundet werden. Biologie wird ohne frei erfundenen Klausurtermin als Fach angeboten.
+- Die Materialbibliothek zeigt mögliche Verbindungen über gemeinsame Themen und fachspezifische Stichwörter. Für jede Verbindung müssen Quellen aus mindestens zwei Fächern vorhanden sein. Die Textbelege werden angezeigt und sollen inhaltlich geprüft werden.
+- Ein gemeinsamer Übungsmix startet erst, wenn zwei passende, freigegebene Fragen vorhanden sind. Keine unbelegten Behauptungen über Lerntransfer.
+- Fortschritt und freie Abschlussreflexion werden lokal gespeichert und ab jetzt zusammen mit anderen Lernständen exportiert.
+- Die Erzeugung vollständig neuer Journeys durch KI ist noch eine geplante Erweiterung. Der vorhandene Worker erstellt KI-Karten und Quizfragen aus jeweils einem Fachtext, nicht aus einem Video.
+
+Entwurfsentscheidung: [ADR 0002](docs/adr/0002-fachuebergreifende-entdeckerreisen.md). Browser-Smoketest: `python tests/browser-journeys.py` mit installierten Paketen Playwright, BeautifulSoup und Chromium.
+
+Die Testdatei verwendet ausschließlich erfundene Beispieldaten. Private Schulunterlagen gehören nicht ins Repository.
