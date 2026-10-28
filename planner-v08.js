@@ -141,6 +141,7 @@
   function closePlanner() {
     overlay.classList.remove('show');
     document.body.style.overflow = '';
+    if (location.hash === '#lernplan' || location.hash === '#tracking') history.replaceState(null,'',location.pathname + location.search);
     if (previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll:true});
     previousFocus = null;
   }
@@ -276,6 +277,11 @@
   }
   $('planStart').addEventListener('click',startPlanned);
   $('planOpen').addEventListener('click',function(){openPlanner('plan');});
+  function syncPlannerHash() {
+    if (location.hash === '#lernplan') openPlanner('plan');
+    else if (location.hash === '#tracking') openPlanner('tracking');
+  }
+  window.addEventListener('hashchange',syncPlannerHash);
   $('plannerClose').addEventListener('click',closePlanner);
   overlay.addEventListener('click',function(e){if(e.target===overlay)closePlanner();});
   overlay.addEventListener('click',function(e){
@@ -288,4 +294,5 @@
   render=function(){applyDates();oldRender();renderPlanner();};
   applyDates();
   render();
+  syncPlannerHash();
 })();
