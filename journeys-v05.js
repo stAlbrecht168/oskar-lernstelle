@@ -85,12 +85,13 @@ function openJourney(stepId){if(!journeyUnlocked(stepId)){toast('Entdecke zuerst
   html=html.replace('<a href="'+WATER_JOURNEY.videoUrl+'"', '<div class="jmedia-video-grid"><div>'+journeyMediaVideo('simpli-water')+'</div><div>'+journeyMediaVideo('nasa-cycle')+'</div></div><a href="'+WATER_JOURNEY.videoUrl+'"');
  } else {
   const imageKey=step.subject?journeyMediaKey(step.name,step.subject):step.type==='reflection'?'earth':'water';
-  html=journeyMediaImage(imageKey,step.type==='quiz'?'Dein '+subject(step.subject).name+'-Labor':step.type==='reflection'?'Deine große Entdeckung':'Dein Abenteuer beginnt')+html;
+  html=(step.type==='intro'?journeyStoryIntro.markup('water'):journeyMediaImage(imageKey,step.type==='quiz'?'Dein '+subject(step.subject).name+'-Labor':step.type==='reflection'?'Deine große Entdeckung':'Dein Abenteuer beginnt'))+html;
  }
  scene.innerHTML=html;
  $('journeyOverlay').classList.add('show');document.body.style.overflow='hidden';
+ if(step.type==='intro')journeyStoryIntro.mount(scene.querySelector('.story-intro'));else journeyStoryIntro.stop();
 }
-function closeJourney(){$('journeySceneBody').replaceChildren();$('journeyOverlay').classList.remove('show');document.body.style.overflow='';}
+function closeJourney(){journeyStoryIntro.stop();$('journeySceneBody').replaceChildren();$('journeyOverlay').classList.remove('show');document.body.style.overflow='';}
 function onJourneyAction(e){
  const choice=e.target.closest('[data-janswer]');if(choice){const scene=$('journeySceneBody');scene.dataset.answer=choice.dataset.janswer;scene.querySelectorAll('[data-janswer]').forEach(b=>b.classList.toggle('active',b===choice));scene.querySelector('[data-jaction="check"]').disabled=false;return;}
  const action=e.target.closest('[data-jaction]');if(!action)return;const stepId=$('journeySceneBody').dataset.step;

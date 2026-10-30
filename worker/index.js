@@ -122,9 +122,10 @@ async function requestModel(env,payload,outputName,format,options={}){
   let upstream;try{upstream=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{authorization:'Bearer '+env.OPENAI_API_KEY,'content-type':'application/json'},body:JSON.stringify({...payload,model:env.OPENAI_MODEL||'gpt-5-mini',store:false,text:{format:{type:'json_schema',name:outputName,strict:true,schema:format}},max_output_tokens:options.maxTokens||3500}),signal:AbortSignal.timeout(options.timeout||35000)});}catch{return {error:'Modell gerade nicht erreichbar.',status:502};}
   if(!upstream.ok)return {error:'Die KI konnte keine Aufgaben erzeugen.',upstreamStatus:upstream.status,status:502};
   let response;try{response=await upstream.json();}catch{return {error:'Fehlerhafte Modellantwort.',status:502};}
-  if(response.status==='incomplete')return {error:'Die KI-Antwort wurde nicht vollständig erstellt. Bitte einen kürzeren Text versuchen.',status:502};
-  const output=(response.output||[]).flatMap(v=>(v.content||[]).filter(x=>x.type==='output_text').map(x=>x.text)).join('');
-  try{return {value:JSON.parse(output)};}catch{return {error:'Modellantwort unvollständig. Bitte mit kürzeren Texten erneut versuchen.',status:502};}
+  if(response?.status==='incomplete')return {error:'Die KI-Antwort wurde nicht vollständig erstellt. Bitte einen kürzeren Text versuchen.',status:502};
+  if(!response||!Array.isArray(response.output))return {error:'Fehlerhafte Modellantwort.',status:502};
+  const output=response.output.flatMap(v=>Array.isArray(v?.content)?v.content.filter(x=>x?.type==='output_text'&&typeof x.text==='string').map(x=>x.text):[]).join('');
+  try{const value=JSON.parse(output);if(!value||typeof value!=='object'||Array.isArray(value))throw Error();return {value};}catch{return {error:'Modellantwort unvollständig. Bitte mit kürzeren Texten erneut versuchen.',status:502};}
 }
 export default {async fetch(request,env){
   const origin=request.headers.get('origin')||'',allow=permittedOrigin(env);
@@ -138,6 +139,7 @@ export default {async fetch(request,env){
   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'JSON erforderlich.'},415,origin);
   const raw=await request.text();if(new TextEncoder().encode(raw).length>(path==='/generate'?68000:34000))return json({error:'Anfrage zu groß.'},413,origin);
   let body;try{body=JSON.parse(raw);}catch{return json({error:'Ungültiges JSON.'},400,origin);}
+  if(!body||typeof body!=='object'||Array.isArray(body))return json({error:'Ungültige Anfrage.'},400,origin);
   if(path==='/generate'){
     if(typeof body.subject!=='string'||body.subject.length>80||typeof body.text!=='string'||body.text.trim().length<30||body.text.length>18000)return json({error:'Bitte Fach und Quelltext von 30 bis 18.000 Zeichen senden.'},400,origin);
     const topicContext=cleanTopicContext(body.existingTopics);

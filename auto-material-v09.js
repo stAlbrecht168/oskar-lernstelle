@@ -65,7 +65,11 @@ function setupSimplifiedMaterials(){
  uploadStatus.addEventListener('click',event=>{
    const b=event.target.closest('[data-auto-action]');if(!b)return;
    if(b.dataset.autoAction==='connect'){details.open=true;$('aiToken').focus();}
-   if(b.dataset.autoAction==='retry')processPendingMaterials(true);
+   if(b.dataset.autoAction==='retry')processPendingMaterials();
+   if(b.dataset.autoAction==='learn'){
+     const m=materialById(b.dataset.sourceId);if(!m||!materialPlayable(m))return;
+     closeParent();chooseSubject(m.subject);startLesson(m.subject,0,false,m.id);
+   }
  });
  displayAutoHistory();
  for(const m of store.materials)if(m.analysisState==='processing')m.analysisState='waiting';
@@ -77,6 +81,9 @@ function workerConnection(){
  return {endpoint,token,ready:/^https:\/\/[^\s/]+$/.test(endpoint)&&!!token};
 }
 const evidenceNorm=s=>String(s||'').toLocaleLowerCase('de-DE').replace(/\s+/g,' ').trim();
+function offerMaterialPractice(m){
+ const b=document.createElement('button');b.className='btn btn-green btn-mini';b.dataset.autoAction='learn';b.dataset.sourceId=m.id;b.textContent='Jetzt mit deinem Schulstoff üben';uploadStatus.appendChild(b);
+}
 function vettedTasks(raw,m){
  const items=Array.isArray(raw)?raw:[],seen=new Set(),out=[];
  for(const t of items){
@@ -85,7 +92,8 @@ function vettedTasks(raw,m){
    if(t.type==='true_false'&&(t.options.length!==2||t.options[0]!=='Richtig'||t.options[1]!=='Falsch'))continue;
    if(t.type==='gap'&&!t.question.includes('___'))continue;
    const key=evidenceNorm(t.question);if(seen.has(key))continue;seen.add(key);
-   out.push({id:uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,type:t.type,question:t.question,options:t.options,correctIndex:t.correctIndex,explanation:t.explanation,evidence:t.evidence,status:'approved',generatedByAI:true,reviewedByHuman:false,created:new Date().toISOString()});
+   const existing=aiTasks.find(old=>old.sourceId===m.id&&evidenceNorm(old.question)===key&&old.type===t.type&&old.correctIndex===t.correctIndex&&JSON.stringify(old.options)===JSON.stringify(t.options));
+   out.push({id:existing?.id||uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,type:t.type,question:t.question,options:t.options,correctIndex:t.correctIndex,explanation:t.explanation,evidence:t.evidence,status:'approved',generatedByAI:true,reviewedByHuman:false,created:new Date().toISOString()});
  }
  return out.slice(0,12);
 }
@@ -94,12 +102,18 @@ function vettedCards(raw,m){
  for(const c of items){
    if(!c||typeof c.term!=='string'||c.term.length<2||c.term.length>90||typeof c.definition!=='string'||c.definition.length<5||c.definition.length>320||typeof c.evidence!=='string'||c.evidence.length<10||c.evidence.length>350||!evidenceNorm(m.text).includes(evidenceNorm(c.evidence)))continue;
    const key=evidenceNorm(c.term);if(seen.has(key))continue;seen.add(key);
-   out.push({id:uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,term:c.term,definition:c.definition,evidence:c.evidence,status:'approved',generatedByAI:true,reviewedByHuman:false,created:new Date().toISOString()});
+   const existing=cards.find(old=>old.sourceId===m.id&&evidenceNorm(old.term)===key&&evidenceNorm(old.definition)===evidenceNorm(c.definition));
+   out.push({id:existing?.id||uniqueId(),sourceId:m.id,sourceTitle:m.title,subject:m.subject,term:c.term,definition:c.definition,evidence:c.evidence,status:'approved',generatedByAI:true,reviewedByHuman:false,created:new Date().toISOString()});
  }
  return out.slice(0,10);
 }
 async function analyzeUploadedMaterial(m){
- if(!window.oskarLocal?.isReady())return;
+ if(!window.oskarLocal?.isReady()||window.oskarLocal?.isSwitching?.())return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context))&&store.materials.includes(m);
+ if(!current()||analyzeUploadedMaterial.active?.has(m))return;
+ (analyzeUploadedMaterial.active??=new WeakSet()).add(m);
+ try{
  const connection=workerConnection();
  const sourceRevision=globalThis.OskarKnowledgeCore?.revision(m);
  if(!connection.ready){
@@ -113,39 +127,50 @@ async function analyzeUploadedMaterial(m){
  try{
   const resp=await fetch(connection.endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+connection.token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,subjectId:m.subject,text:m.text.slice(0,18000),existingTopics:typeof globalThis.oskarKnowledgeContext==='function'?globalThis.oskarKnowledgeContext(m):[]}),signal:AbortSignal.timeout(60000)});
   let result;try{result=await resp.json();}catch{throw Error('Ungültige Antwort des KI-Dienstes.');}
-  if(!resp.ok)throw Error(result.error||'KI-Dienst meldet Fehler '+resp.status);
-  if(!store.materials.includes(m))return;
+  if(!current())return;
+  if(!resp.ok)throw Error(typeof result?.error==='string'?result.error:'Der KI-Dienst ist gerade nicht verfügbar. Bitte erneut versuchen.');
   if(sourceRevision&&globalThis.OskarKnowledgeCore.revision(m)!==sourceRevision)throw Error('Die Quelle wurde während der Auswertung geändert. Bitte erneut analysieren.');
+  if(!result||typeof result!=='object'||!Array.isArray(result.tasks)||!Array.isArray(result.cards))throw Error('Die KI-Antwort enthält keine gültigen Übungen. Bitte erneut versuchen.');
   const tasks=vettedTasks(result.tasks,m),newCards=vettedCards(result.cards,m);
   if(!tasks.length&&!newCards.length&&!result.topics?.length)throw Error('Die Datei enthält zu wenig eindeutige Aussagen. Bitte eine zusätzliche oder besser lesbare Seite hochladen.');
   for(const entry of [...tasks,...newCards])if(sourceRevision)entry.sourceRevision=sourceRevision;
-  const previousTasks=aiTasks,previousCards=cards;
   aiTasks=aiTasks.filter(t=>t.sourceId!==m.id).concat(tasks);
   cards=cards.filter(c=>c.sourceId!==m.id).concat(newCards);
-  if(!saveTasks()||!persistCards()){aiTasks=previousTasks;cards=previousCards;saveTasks();persistCards();throw Error('Die Aufgaben konnten nicht im lokalen Ordner gespeichert werden.');}
+  if(!saveTasks()||!persistCards())throw Error('Die Aufgaben konnten nicht gespeichert werden.');
+  await window.oskarLocal.flush();
+  if(!current())return;
   m.analysisState='ready';m.analysisCount=tasks.length+newCards.length;m.analysisError='';
   m.analysisCoverage=Math.min(m.text.length,18000);
   if(typeof globalThis.oskarRememberKnowledge==='function')await globalThis.oskarRememberKnowledge(m,result);
-  persist();await window.oskarLocal.flush();render();displayAutoHistory();
-  setAutoStatus('Fertig! '+tasks.length+' '+(tasks.length===1?'Übung':'Übungen')+' und '+newCards.length+' '+(newCards.length===1?'Lernkarte':'Lernkarten')+' für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
+  if(!current())return;
+  persist();await window.oskarLocal.flush();if(!current())return;render();displayAutoHistory();
+  setAutoStatus('Fertig! '+tasks.length+' Übungen und '+newCards.length+' Lernkarten für '+subject(m.subject).name+' erstellt. Die Levels verwenden jetzt deinen Schulstoff. Die KI-Inhalte sind automatisch erzeugt und sollten stichprobenartig geprüft werden.','ready');
+  if(materialPlayable(m))offerMaterialPractice(m);
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
  }catch(err){
-  if(!store.materials.includes(m))return;
-  m.analysisState='failed';m.analysisError=String(err.message||'Unbekannter Fehler').slice(0,180);
+  if(!current())return;
+  m.analysisState='failed';m.analysisError=(['TimeoutError','AbortError'].includes(err?.name)?'Die KI braucht gerade zu lange. Bitte erneut versuchen.':err?.name==='TypeError'?'Der KI-Dienst ist gerade nicht erreichbar. Bitte die Verbindung prüfen und erneut versuchen.':String(err.message||'Die KI-Analyse konnte nicht abgeschlossen werden.')).slice(0,180);
   persist();displayAutoHistory();if(typeof renderSubjectMaterialStatus==='function')renderSubjectMaterialStatus();
   setAutoStatus('Schultext gespeichert, aber die KI-Analyse ist fehlgeschlagen: '+m.analysisError,'failed');
   const b=document.createElement('button');b.className='btn btn-outline btn-mini';b.dataset.autoAction='retry';b.textContent='Analyse erneut versuchen';uploadStatus.appendChild(b);
  }
+ }finally{analyzeUploadedMaterial.active.delete(m);}
 }
 async function processPendingMaterials(){
- if(!window.oskarLocal?.isReady()||autoUploadBusy||autoAnalysisBusy)return;
+ if(!window.oskarLocal?.isReady()||window.oskarLocal?.isSwitching?.()||autoUploadBusy||autoAnalysisBusy)return;
+ const context=window.oskarLocal?.getContext?.()??0;
  const connection=workerConnection();
  if(!connection.ready){displayAutoHistory();return;}
  autoAnalysisBusy=true;
  try{
   const pending=store.materials.filter(materialNeedsAnalysis);
   for(const m of pending){if(!store.materials.includes(m))continue;await analyzeUploadedMaterial(m);}
- }finally{autoAnalysisBusy=false;}
+ }finally{
+  autoAnalysisBusy=false;
+  // Ein alter Auftrag kann den Start nach einem Ordnerwechsel kurz blockiert
+  // haben. Nur in einer neuen Generation genau eine aktuelle Queue starten.
+  if((window.oskarLocal?.getContext?.()??0)!==context&&!window.oskarLocal?.isSwitching?.()&&window.oskarLocal?.isReady())void processPendingMaterials();
+ }
 }
 async function readScannedPdf(file){
  if(!window.pdfjsLib)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',()=>!!window.pdfjsLib);
@@ -168,8 +193,11 @@ async function readScannedPdf(file){
 }
 async function ingestSchoolFile(file){
  if(!window.oskarLocal?.isReady()){setAutoStatus('Bitte zuerst einen lokalen Ordner auswählen.','waiting');return;}
+ if(window.oskarLocal?.isSwitching?.()){setAutoStatus('Bitte warten, bis der Speicherordner verbunden ist.','waiting');return;}
  if(autoUploadBusy)return;
  if(!file)return;
+ const context=window.oskarLocal?.getContext?.()??0;
+ const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context));
  if(!subject($('materialSubject').value)){setAutoStatus('Bitte zuerst ein Schulfach auswählen.','failed');return;}
  autoUploadBusy=true;uploadElement.disabled=true;
  const subjectId=$('materialSubject').value;
@@ -181,32 +209,32 @@ async function ingestSchoolFile(file){
    if((file.type==='application/pdf'||/\.pdf$/i.test(file.name))&&/Scan|Texterkennung/i.test(err.message||''))text=await readScannedPdf(file);
    else throw err;
   }
+  if(!current())return;
   text=String(text||'').trim();
   if(text.length<30)throw Error('Zu wenig lesbarer Text. Verwende eine gut lesbare PDF- oder Fotoaufnahme mit mindestens 30 Zeichen.');
-  const sourceText=text.slice(0,30000);
-  const fileHash=globalThis.OskarKnowledgeFiles?await globalThis.OskarKnowledgeFiles.fingerprint(file):'';
-  const duplicate=globalThis.OskarKnowledgeCore?store.materials.find(m=>m.subject===subjectId&&globalThis.OskarKnowledgeCore.revision(m)===globalThis.OskarKnowledgeCore.revision({subject:subjectId,text:sourceText})&&(fileHash&&m.original?.sha256?fileHash===m.original.sha256:m.title===file.name&&(!m.original||m.original.size===file.size))):null;
+  const bytes=await file.arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);
+  if(!current())return;
+  const contentHash=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const duplicate=store.materials.find(m=>m.subject===subjectId&&(m.contentHash===contentHash||evidenceNorm(m.text)===evidenceNorm(text)));
   if(duplicate){
-   if(!duplicate.original&&globalThis.OskarKnowledgeFiles){
-    try{duplicate.original=await globalThis.OskarKnowledgeFiles.put(duplicate.id,file);delete duplicate.originalError;persist();}
-    catch(error){duplicate.originalError=error.message;persist();}
-   }
-   setAutoStatus('Diese Quelle ist bereits gespeichert. Vorhandenes Wissen und Übungen werden wiederverwendet.','ready');
-   if(duplicate.originalError)setAutoStatus('Schultext bereits gespeichert. Originaldatei nicht gesichert: '+duplicate.originalError,'waiting');
-   if(duplicate.analysisState!=='ready')await analyzeUploadedMaterial(duplicate);
+   setAutoStatus('Dieses Material ist in diesem Fach bereits gespeichert. Es wurde nicht erneut importiert.',materialPlayable(duplicate)?'ready':'waiting');
+   if(materialPlayable(duplicate))offerMaterialPractice(duplicate);
+   else{const b=document.createElement('button');b.className='btn btn-outline btn-mini';b.dataset.autoAction='retry';b.textContent='Lernaufgaben vorbereiten';uploadStatus.appendChild(b);}
    return;
   }
   if(store.materials.length>=100)throw Error('Maximale Zahl von Quellen erreicht. Bitte alte Quellen entfernen oder ein Backup anlegen.');
   const id=uniqueId();
   const originalPath=await window.oskarLocal.saveOriginal(file,id,subjectId);
-  const m={id,subject:subjectId,title:file.name.slice(0,100),originalPath,original:{name:file.name.slice(0,160),size:file.size,sha256:fileHash},text:sourceText,created:new Date().toISOString(),analysisState:'waiting'};
-  store.materials.push(m);persist();await window.oskarLocal.flush();render();displayAutoHistory();
+  if(!current())return;
+  const m={id,subject:subjectId,title:file.name.slice(0,100),originalPath,contentHash,original:{name:file.name.slice(0,160),size:file.size,sha256:contentHash},text:text.slice(0,30000),created:new Date().toISOString(),analysisState:'waiting'};
+  store.materials.push(m);persist();await window.oskarLocal.flush();if(!current())return;render();displayAutoHistory();
   setAutoStatus('Datei gespeichert. Bereite die Lernaufgaben vor …','working');
   if(typeof scheduleAiConnections==='function')scheduleAiConnections();
   await analyzeUploadedMaterial(m);
  }catch(err){
+  if(!current())return;
   setAutoStatus('Datei konnte nicht übernommen werden: '+(err.message||'Unbekannter Fehler'),'failed');
- }finally{uploadElement.value='';uploadElement.disabled=false;autoUploadBusy=false;}
+ }finally{if(current())uploadElement.value='';uploadElement.disabled=!window.oskarLocal?.isReady()||!!window.oskarLocal?.isSwitching?.();autoUploadBusy=false;}
 }
 const AUTO_MATERIAL_STYLES=String.raw`
 #parentOverlay #parentMaterials>.auto-note{font-size:13px;color:#687893;line-height:1.45;margin:6px 0 18px}

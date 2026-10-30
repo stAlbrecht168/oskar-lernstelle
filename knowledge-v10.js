@@ -146,6 +146,7 @@ globalThis.oskarRememberKnowledge=async(source,result)=>{
 };
 globalThis.oskarKnowledgeChanged=()=>{if(!panel.hidden)paint();};
 globalThis.oskarExportKnowledge=()=>structuredClone(state);
+globalThis.oskarSetKnowledge=raw=>{questionSerial++;activeTopic='';state=structuredClone(raw);lastSourceSignature='';};
 globalThis.oskarPrepareKnowledgeImport=(raw,sources)=>core.restore(raw,sources);
 globalThis.oskarImportKnowledge=prepared=>{questionSerial++;activeTopic='';save(core.restore(prepared,store.materials));paint();};
 globalThis.oskarKnowledgeLoaded=()=>{seedExisting();lastSourceSignature='';sourcesChanged();paint();};
@@ -158,7 +159,10 @@ function requireConnection(){
 }
 async function request(path,payload){
  const config=requireConnection();if(!config)throw new Error('KI-Verbindung fehlt. Die gespeicherten Quellen bleiben erhalten.');
+ const context=globalThis.oskarLocal?.getContext?.();
+ if(globalThis.oskarLocal?.isSwitching?.())throw Error('Bitte den Speicherwechsel abwarten.');
  const response=await fetch(config.endpoint+path,{method:'POST',headers:{authorization:'Bearer '+config.token,'content-type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(60000)});
+ if(context!==undefined&&!globalThis.oskarLocal.isCurrent(context))throw Error('Der Speicherordner wurde geändert. Bitte erneut versuchen.');
  let data;try{data=await response.json();}catch{throw new Error('Der KI-Dienst hat keine lesbare Antwort geliefert.');}
  if(!response.ok)throw new Error(data.error||'Der KI-Dienst meldet Fehler '+response.status+'.');
  return data;

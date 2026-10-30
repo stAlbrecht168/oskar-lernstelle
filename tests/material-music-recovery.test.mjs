@@ -30,8 +30,10 @@ test('original PDFs and generated tasks are saved in the selected local repo fol
  assert.match(source,/sessionStorage\.getItem\('oskar-ai-access'\)/);
 });
 test('distinct section surfaces do not add repeated framed cards',()=>{
- assert.match(page,/\.left-col>\#learn\{background:\#fff;border:0/);
- assert.match(page,/\.left-col>\#discoveries\{background:linear-gradient\(/);
- assert.match(page,/\.right-col \.panel\{padding:18px;background:rgba\(/);
- assert.match(page,/\.subject-source-status\{display:flex/);
+ // Check the unframed content, independently of spacing tokens or declaration order.
+ assert.match(page,/\.left-col\s*>\s*#learn\s*\{[^{}]*\bborder\s*:\s*0\s*[;}]/);
+ assert.match(page,/\.left-col\s+#learn\s+\.level-label\s*\{[^{}]*\bborder\s*:\s*0\s*[;}]/);
+ assert.match(page,/#discoveries\s+\.journey-node\s+button\s*\{[^{}]*\bborder\s*:\s*0\s*[;}]/);
+ assert.match(page,/\.right-col\s+\.panel\s*\{[^{}]*\bborder\s*:\s*0\s*[;}]/);
+ assert.match(page,/\.subject-source-status\s*\{[^{}]*\bdisplay\s*:\s*flex\s*[;}]/);
 });

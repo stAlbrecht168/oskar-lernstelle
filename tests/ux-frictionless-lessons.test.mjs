@@ -39,9 +39,13 @@ test('discovery section focuses on journeys without separate bridge catalog',()=
  assert.match(generator,/\$\('discoveries'\)\.append\(section\)/);
 });
 test('distinct soft background areas separate lessons, discoveries and supporting information',()=>{
- assert.match(page,/\.left-col>\#learn\{background:\#fff;border:0/);
- assert.match(page,/\.left-col>\#discoveries\{background:linear-gradient\(/);
- assert.match(page,/\.right-col \.panel\{padding:18px;background:rgba\(/);
- assert.match(page,/\#discoveries \.journey-node button\{border:0/);
+ // Surface identity matters; padding values and declaration order do not.
+ const mission=page.match(/\.hero\s*\{[^{}]*\bbackground\s*:\s*(linear-gradient\([^;{}]+)\s*[;}]/)?.[1];
+ const discoveries=page.match(/\.left-col\s*>\s*#discoveries\s*\{[^{}]*\bbackground\s*:\s*(linear-gradient\([^;{}]+)\s*[;}]/)?.[1];
+ assert.ok(mission,'the daily mission retains its own gradient surface');
+ assert.ok(discoveries,'discoveries retain their own gradient surface');
+ assert.notEqual(mission.replace(/\s+/g,''),discoveries.replace(/\s+/g,''));
+ assert.match(page,/\.left-col\s*>\s*#learn\s*\{[^{}]*\bbackground\s*:\s*#fff(?:fff)?\s*[;}]/);
+ assert.match(page,/\.right-col\s+\.panel\s*\{[^{}]*\bbackground\s*:\s*rgba\(/);
  assert.doesNotMatch(page,/erst Karten freigeben/);
 });
