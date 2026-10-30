@@ -17,7 +17,10 @@ export const PUBLIC_FILES = Object.freeze([
   'assessment-core-v08.js',
   'assessment-v08.js',
   'auto-material-v09.js',
-  'local-folder-v10.js'
+  'local-folder-v10.js',
+  'knowledge-core-v10.js',
+  'knowledge-files-v10.js',
+  'knowledge-v10.js'
 ]);
 const publicPaths = new Map(PUBLIC_FILES.map(name => ['/' + name, name]));
 publicPaths.set('/', 'index.html');

@@ -91,6 +91,7 @@ async function autoAnalyzeConnections(force=false){
    if(connectionSignature(connectionSources())===signature){
      connectionsCache={signature,connections:clean,updatedAt:new Date().toISOString()};
      if(window.oskarLocal?.isReady())window.oskarLocal.snapshot();else localStorage.setItem(CONNECTIONS_KEY,JSON.stringify(connectionsCache));
+     if(typeof globalThis.oskarKnowledgeChanged==='function')globalThis.oskarKnowledgeChanged();
    }else connectionsQueued=true;
  }catch(error){
    if(!current())return;

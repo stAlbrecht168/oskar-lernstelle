@@ -128,7 +128,7 @@ createAiCardsForMaterial=async function(id){if(window.oskarLocal?.isSwitching?.(
  }catch(err){if(!current())return;status.textContent='KI nicht verfügbar: '+(err.message||'Unbekannter Fehler');toast('Erstellen fehlgeschlagen.');}};
 // Die bereits eingerichtete Eventdelegation in materialsList ruft die neu belegte Funktion auf.
 const oldExport=exportData;
-$('exportBackup').addEventListener('click',e=>{e.stopImmediatePropagation();const data=JSON.stringify({version:2,exported:new Date().toISOString(),progress:store,cards,tasks:aiTasks,assessments:typeof oskarExportAssessments==='function'?oskarExportAssessments():[],journeys:typeof journeyState==='object'?journeyState:{},connections:typeof connectionsCache!=='undefined'?connectionsCache:null},null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='oskar-lernstelle-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);},true);
+$('exportBackup').addEventListener('click',async e=>{e.stopImmediatePropagation();try{const originalFiles=typeof oskarBackupOriginals==='function'?await oskarBackupOriginals():[];const data=JSON.stringify({version:3,originalFiles,knowledge:typeof oskarExportKnowledge==='function'?oskarExportKnowledge():null,exported:new Date().toISOString(),progress:store,cards,tasks:aiTasks,assessments:typeof oskarExportAssessments==='function'?oskarExportAssessments():[],journeys:typeof journeyState==='object'?journeyState:{},connections:typeof connectionsCache!=='undefined'?connectionsCache:null},null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='oskar-lernstelle-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}catch(err){toast('Backup fehlgeschlagen: '+err.message);}},true);
 $('importBackup').addEventListener('change',async e=>{
  e.stopImmediatePropagation();
  const f=e.target.files?.[0];if(!f)return;
@@ -136,10 +136,10 @@ $('importBackup').addEventListener('change',async e=>{
  const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context));
  try{
   if(!current())throw Error('Bitte warten, bis der Speicherordner verbunden ist.');
-  if(f.size>32*1024*1024)throw Error('Backup ist zu groß (maximal 32 MB).');
+  if(f.size>64*1024*1024)throw Error('Backup ist zu groß (maximal 64 MB).');
   const obj=JSON.parse(await f.text());
   if(!current())throw Error('Der Speicherordner wurde geändert. Bitte das Backup erneut auswählen.');
-  if(![1,2].includes(obj.version)||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw Error('Ungültiges Backup');
+  if(![1,2,3].includes(obj.version)||!obj.progress||!Array.isArray(obj.cards)||!Array.isArray(obj.progress.materials))throw Error('Ungültiges Backup');
   const missing=[];
   const preserved=(key,label,fallback)=>{
    if(Object.hasOwn(obj,key))return obj[key];
@@ -150,9 +150,17 @@ $('importBackup').addEventListener('change',async e=>{
    tasks:preserved('tasks','KI-Aufgaben',aiTasks),
    assessments:preserved('assessments','Klassenarbeiten',typeof oskarExportAssessments==='function'?oskarExportAssessments():[]),
    journeys:preserved('journeys','Entdeckerreisen',typeof journeyState==='object'?journeyState:{}),
-   connections:preserved('connections','KI-Verbindungen',typeof connectionsCache!=='undefined'?connectionsCache:null)};
+   connections:preserved('connections','KI-Verbindungen',typeof connectionsCache!=='undefined'?connectionsCache:null),
+   knowledge:preserved('knowledge','Wissensseiten',typeof oskarExportKnowledge==='function'?oskarExportKnowledge():{version:1,contributions:[],processed:[],conflicts:[]})};
+  if(bundle.knowledge===null)bundle.knowledge={version:1,contributions:[],processed:[],conflicts:[]};
+  if(obj.version===3&&(!Array.isArray(obj.originalFiles)||materials.some(m=>m.originalPath&&!obj.originalFiles.some(row=>row?.sourceId===m.id))))throw Error('Originaldateien fehlen im Backup.');
   const notice=missing.length?' Dieses ältere Backup enthält keine '+missing.join(', ')+'. Diese vorhandenen Daten bleiben erhalten.':'';
-  if(!confirm('Vorhandene lokale Daten durch dieses Backup ersetzen?'+notice))return;
+  const approve=()=>confirm('Vorhandene lokale Daten durch dieses Backup ersetzen?'+notice);
+  if(obj.version===3&&Array.isArray(obj.originalFiles)&&obj.originalFiles.length){
+   await window.oskarLocal.restoreJsonBackup(bundle,obj.originalFiles,{approve});
+   toast('Backup mit Wissen und Originaldateien wiederhergestellt.');return;
+  }
+  if(!approve())return;
   if(typeof window.oskarLocal?.restoreBackup!=='function')throw Error('Die sichere Wiederherstellung ist noch nicht verfügbar. Bitte die App neu laden.');
   await window.oskarLocal.restoreBackup(bundle);
   toast('Backup wiederhergestellt.'+notice);

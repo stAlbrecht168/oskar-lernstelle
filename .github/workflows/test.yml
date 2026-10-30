@@ -31,6 +31,10 @@ jobs:
           node --check connections-v07.js
           node --check auto-material-v09.js
           node --check local-folder-v10.js
+          node --check knowledge-core-v10.js
+          node --check knowledge-files-v10.js
+          node --check knowledge-v10.js
           node --check worker/index.js
+          node --check worker/knowledge.js
       - name: UX-Hauptmission und Seitenhierarchie prüfen
-        run: node --test tests/ux-primary-mission.test.mjs tests/ux-frictionless-lessons.test.mjs tests/material-music-recovery.test.mjs
+        run: node --test tests/*.test.mjs

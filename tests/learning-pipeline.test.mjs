@@ -16,6 +16,7 @@ function pipeline(extra={}){
   fetch:async()=>({ok:true,json:async()=>noisyModelAnswer()}),AbortSignal,...extra
  };
  sandbox.window=sandbox;
+ vm.runInNewContext(auto.slice(auto.indexOf('function materialPlayable('),auto.indexOf('function materialNeedsAnalysis(')),sandbox);
  vm.runInNewContext(auto.slice(auto.indexOf('const evidenceNorm='),auto.indexOf('async function readScannedPdf')),sandbox);
  return {sandbox,material,saves:()=>saves};
 }

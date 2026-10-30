@@ -31,10 +31,13 @@ jobs:
           node --check assessment-v08.js
           node --check auto-material-v09.js
           node --check local-folder-v10.js
+          node --check knowledge-core-v10.js
+          node --check knowledge-files-v10.js
+          node --check knowledge-v10.js
       - name: Statische Dateien vorbereiten
         run: |
           mkdir -p public
-          cp index.html study-v04.js journey-media-v07.js journeys-v05.js journey-generator-v06.js connections-v07.js planner-v08.js assessment-core-v08.js assessment-v08.js auto-material-v09.js local-folder-v10.js public/
+          cp index.html study-v04.js journey-media-v07.js journeys-v05.js journey-generator-v06.js connections-v07.js planner-v08.js assessment-core-v08.js assessment-v08.js auto-material-v09.js knowledge-core-v10.js knowledge-files-v10.js knowledge-v10.js local-folder-v10.js public/
           touch public/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:

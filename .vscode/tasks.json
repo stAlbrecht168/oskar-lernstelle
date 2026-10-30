@@ -30,7 +30,9 @@
         "tests/ux-primary-mission.test.mjs",
         "tests/ux-frictionless-lessons.test.mjs",
         "tests/material-music-recovery.test.mjs",
-        "tests/local-repository-storage.test.mjs"
+        "tests/local-repository-storage.test.mjs",
+        "tests/knowledge.test.mjs",
+        "tests/knowledge-folder.test.mjs"
       ],
       "group": {
         "kind": "test",

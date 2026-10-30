@@ -8,10 +8,10 @@ const source = readFileSync(new URL('../local-folder-v10.js', import.meta.url), 
 const FILES = {
   materials:'materialien.json', cards:'lernkarten.json', tasks:'aufgaben.json',
   progress:'lernstand.json', assessments:'klassenarbeiten.json',
-  journeys:'entdeckerreisen.json', connections:'fachverbindungen.json'
+  journeys:'entdeckerreisen.json', connections:'fachverbindungen.json',knowledge:'wissen.json'
 };
 const BROWSER_KEYS = ['synthetic-progress', 'synthetic-cards', 'synthetic-tasks',
-  'oskar-lernstelle-assessments-v1', 'oskar-lernstelle-journeys-v1', 'oskar-subject-connections-v1'];
+  'oskar-lernstelle-assessments-v1', 'oskar-lernstelle-journeys-v1', 'oskar-subject-connections-v1','oskar-knowledge-wiki-v1'];
 const clone = value => JSON.parse(JSON.stringify(value));
 const notFound = () => Object.assign(new Error('Synthetic missing entry'), {name:'NotFoundError'});
 
@@ -47,18 +47,19 @@ function dataset(label = 'a') {
     challenge:'Wie kannst du die Wassermenge für eine Pflanze messen?',
     evidence:materials.map(material => ({sourceId:material.id, subject:material.subject, quote:material.text.split('. ')[0] + '.'}))
   }]};
-  return {materials, cards, tasks, progress, assessments, journeys, connections};
+  const knowledge={version:1,contributions:[{topicId:'topic-'+label,title:'Synthetic knowledge',summary:'Synthetische Erklärung',quote:materials[0].text,subject:'math',sourceId:materials[0].id,sourceRevision:'v1:synthetic',terms:[]}],processed:[],conflicts:[]};
+  return {materials, cards, tasks, progress, assessments, journeys, connections,knowledge};
 }
 
 function emptyDataset() {
   return {materials:[], cards:[], tasks:[], progress:{xp:0, completed:[], errors:[], days:[], studyLog:[], examDates:{}},
-    assessments:[], journeys:{}, connections:null};
+    assessments:[], journeys:{}, connections:null,knowledge:{version:1,contributions:[],processed:[],conflicts:[]}};
 }
 
 function browserValues(data) {
   return Object.fromEntries(BROWSER_KEYS.map((key, index) => [key, JSON.stringify([
     {...data.progress, materials:data.materials}, data.cards, data.tasks,
-    data.assessments, data.journeys, data.connections
+    data.assessments, data.journeys, data.connections,data.knowledge
   ][index])]));
 }
 
@@ -139,7 +140,7 @@ function runtime(initial = emptyDataset(), {browserData} = {}) {
   function element() { return {dataset:{}, disabled:false, textContent:'', append() {}, setAttribute() {}, addEventListener() {}, querySelector() {return null;}}; }
   for (const id of ['materialFile', 'saveMaterial', 'parentMaterials']) elements.set(id, element());
   const browser = new Map(browserData ? Object.entries(browserData) : BROWSER_KEYS.map(key => [key, 'synthetic browser sentinel']));
-  let assessments = clone(initial.assessments), paints = 0;
+  let assessments = clone(initial.assessments),knowledge=clone(initial.knowledge), paints = 0;
   const sandbox = {
     document:{createElement:element, getElementById:id => elements.get(id) || null},
     crypto:webcrypto, TextEncoder, TextDecoder, Uint8Array, DataView, Map, Blob, structuredClone, DOMException,
@@ -147,6 +148,7 @@ function runtime(initial = emptyDataset(), {browserData} = {}) {
     store:{...clone(initial.progress), materials:clone(initial.materials)}, cards:clone(initial.cards), aiTasks:clone(initial.tasks),
     journeyState:clone(initial.journeys), connectionsCache:clone(initial.connections),
     oskarExportAssessments:() => assessments,
+    oskarExportKnowledge:()=>knowledge,oskarSetKnowledge(raw){knowledge=clone(raw);},
     oskarSetAssessments(raw) { assessments = clone(raw); },
     oskarImportAssessments(raw) { assessments = clone(raw); sandbox.persist(); sandbox.render(); },
     persist() {}, persistCards() { return true; }, saveTasks() { return true; },
@@ -160,12 +162,12 @@ function runtime(initial = emptyDataset(), {browserData} = {}) {
   return {
     api:sandbox.oskarLocal, sandbox, browser,
     state() { const {materials, ...progress} = sandbox.store; return clone({materials, cards:sandbox.cards, tasks:sandbox.aiTasks,
-      progress, assessments, journeys:sandbox.journeyState, connections:sandbox.connectionsCache}); },
+      progress, assessments, journeys:sandbox.journeyState, connections:sandbox.connectionsCache,knowledge}); },
     setState(value) {
       sandbox.store = {...clone(value.progress), materials:clone(value.materials)};
       sandbox.cards = clone(value.cards); sandbox.aiTasks = clone(value.tasks);
       sandbox.journeyState = clone(value.journeys); sandbox.connectionsCache = clone(value.connections);
-      assessments = clone(value.assessments);
+      assessments = clone(value.assessments);knowledge=clone(value.knowledge);
     },
     paints:() => paints
   };
@@ -594,8 +596,8 @@ async function alteredBlob(fixture,change,{rehash=false}={}){
 test('full ZIP includes all seven groups, binary originals, orphan originals and versioned SHA-256 manifest',async()=>{
  const f=await fullFixture(),entries=f.zip.unpack(new Uint8Array(await f.blob.arrayBuffer()));
  const manifest=JSON.parse(f.zip.decode(entries.get('manifest.json')));
- assert.equal(manifest.version,1);assert.equal(manifest.format,'oskar-full-backup');
- assert.equal(manifest.files.length,10);
+ assert.equal(manifest.version,2);assert.equal(manifest.format,'oskar-full-backup');
+ assert.equal(manifest.files.length,11);
  for(const file of manifest.files){assert.equal(file.size,entries.get(file.path).length);assert.equal(file.sha256,await f.zip.sha(entries.get(file.path)));}
  for(const [path,bytes] of f.originals)assert.deepEqual([...entries.get(path)],[...bytes]);
  for(const [group,name] of Object.entries(FILES))assert.deepEqual(JSON.parse(f.zip.decode(entries.get(name))),f.expected[group]);
@@ -753,4 +755,28 @@ test('editing data during an original restore rolls back before saving the newer
  const newer=dataset('newer');app.setState(newer);app.api.snapshot();release();
  await assert.rejects(restoring);await app.api.flush();assert.deepEqual(app.state(),newer);
  const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),newer);
+});
+
+test('legacy ZIP version 1 without knowledge restores as a complete previous-format backup',async()=>{
+ const f=await fullFixture(),entries=f.zip.unpack(new Uint8Array(await f.blob.arrayBuffer()));
+ entries.delete('wissen.json');const manifest=JSON.parse(f.zip.decode(entries.get('manifest.json')));manifest.version=1;manifest.files=manifest.files.filter(row=>row.path!=='wissen.json');entries.set('manifest.json',f.zip.encode(JSON.stringify(manifest)));
+ const app=runtime(),folder=memoryFolder();await app.api.connect(folder.handle);await app.api.restoreFullBackup(new Blob([f.zip.pack(entries)]));
+ assert.deepEqual(app.state().knowledge,emptyDataset().knowledge);assert.equal(app.state().materials.length,2);
+});
+test('an interrupted seven-file journal remains recoverable after adding knowledge storage',async()=>{
+ const old=dataset('old'),folder=memoryFolder().seed(old);
+ const before=folder.primary();delete before['wissen.json'];folder.data.files.set('.oskar-transaction.json',JSON.stringify({version:1,before}));folder.data.files.set('lernstand.json',JSON.stringify({xp:999}));
+ const app=runtime();await app.api.connect(folder.handle);assert.deepEqual(app.state(),old);
+});
+test('JSON version 3 originals and knowledge use the full transaction and reject damaged bytes before confirmation',async()=>{
+ const data=dataset('json'),app=runtime(),folder=memoryFolder();await app.api.connect(folder.handle);
+ app.sandbox.Blob=Blob;app.sandbox.atob=atob;app.sandbox.btoa=btoa;
+ vm.runInNewContext(readFileSync(new URL('../knowledge-files-v10.js',import.meta.url),'utf8'),app.sandbox);
+ const bytes=new TextEncoder().encode('Synthetic private original.'),hash=await app.sandbox.OskarBackupZip.sha(bytes);
+ const rows=[{sourceId:data.materials[0].id,name:'synthetic.txt',type:'text/plain',size:bytes.length,sha256:hash,data:Buffer.from(bytes).toString('base64')}];
+ let approved=false;const before=folder.image();await assert.rejects(app.api.restoreJsonBackup(data,[{...rows[0],sha256:'0'.repeat(64)}],{approve(){approved=true;return true;}}));
+ assert.equal(approved,false);assert.deepEqual(folder.image(),before);
+ await app.api.restoreJsonBackup(data,rows);assert.deepEqual(app.state().knowledge,data.knowledge);
+ assert.deepEqual(await originalBytes(folder,app.state().materials[0].originalPath),[...bytes]);
+ const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),app.state());
 });
