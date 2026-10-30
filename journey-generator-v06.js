@@ -130,7 +130,7 @@ function handleJourneyList(e){const b=e.target.closest('[data-jrun],[data-jedit]
  if(!confirm('Diese Reise und ihren Fortschritt löschen?'))return;
  journeyState.aiJourneys=journeyDraftItems().filter(x=>x.id!==id);delete journeyProgress()[id];saveAiJourney();
 }
-function closeAiJourney(){journeyOpened=null;$('aiJourneyScene').replaceChildren();$('aiJourneyOverlay').classList.remove('show');document.body.style.overflow='';}
+function closeAiJourney(){journeyStoryIntro.stop();journeyOpened=null;$('aiJourneyScene').replaceChildren();$('aiJourneyOverlay').classList.remove('show');document.body.style.overflow='';}
 function aiJourneySteps(j){return [{type:'intro'},...(videoForJourney(j)?[{type:'video'}]:[]),...j.stations.map((s,i)=>({type:'quiz',index:i})),{type:'reflection'}];}
 function openAiJourney(id){const j=journeyDraftItems().find(x=>x.id===id&&x.status==='approved');if(!j||!journeyValid(j)){toast('Die Quellen dieser Reise sind nicht mehr gültig.');return;}
  journeyOpened=id;$('aiJourneyOverlay').classList.add('show');document.body.style.overflow='hidden';renderAiJourneyScene();
@@ -152,9 +152,10 @@ function renderAiJourneyScene(){const j=journeyDraftItems().find(x=>x.id===journ
  } else {
   const imageKey=step.type==='quiz'?journeyMediaKey(j.title,j.stations[step.index].subject):step.type==='reflection'?journeyMediaKey(j.title):journeyMediaKey([j.title,j.guidingQuestion,j.connection].join(' '));
   const caption=step.type==='quiz'?'Fachstation · '+(subject(j.stations[step.index].subject)?.name||'Entdecken'):step.type==='reflection'?'Deine Entdeckung':'Die Welt hinter deiner Frage';
-  html=html.replace('<div class="scene-badge">',journeyMediaImage(imageKey,caption,step.type==='quiz'?'compact':'scene')+'<div class="scene-badge">');
+  html=html.replace('<div class="scene-badge">',(step.type==='intro'?journeyStoryIntro.markup(imageKey):journeyMediaImage(imageKey,caption,step.type==='quiz'?'compact':'scene'))+'<div class="scene-badge">');
  }
  $('aiJourneyScene').innerHTML=html;
+ if(step.type==='intro')journeyStoryIntro.mount($('aiJourneyScene').querySelector('.story-intro'));else journeyStoryIntro.stop();
 }
 function handleJourneyPlayer(e){const choice=e.target.closest('[data-aichoice]');if(choice){const scene=$('aiJourneyScene');scene.dataset.choice=choice.dataset.aichoice;scene.querySelectorAll('[data-aichoice]').forEach(b=>b.classList.toggle('active',b===choice));scene.querySelector('[data-aiaction="check"]').disabled=false;return;}
  const button=e.target.closest('[data-aiaction]');if(!button)return;const j=journeyDraftItems().find(x=>x.id===journeyOpened);if(!j)return;

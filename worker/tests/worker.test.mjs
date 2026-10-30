@@ -63,3 +63,25 @@ test('KI kann ohne belegbare Überschneidung eine leere Vorschlagsliste zurückg
     assert.deepEqual((await response.json()).connections,[]);
   }finally{globalThis.fetch=old;}
 });
+
+test('malformed model envelopes and JSON roots return a readable 502 instead of throwing',async()=>{
+ const old=globalThis.fetch;
+ try{
+  for(const payload of [null,{output:{}},{output:[{content:{}}]},
+   {output:[{content:[null,{type:'output_text',text:'null'}]}]},
+   {output:[{content:[{type:'output_text',text:'[]'}]}]},
+   {output:[{content:[{type:'output_text',text:'{'}]}]}]){
+   globalThis.fetch=async()=>Response.json(payload);
+   const response=await worker.fetch(query('/generate'),env);
+   assert.equal(response.status,502);assert.equal(typeof (await response.json()).error,'string');
+  }
+ }finally{globalThis.fetch=old;}
+});
+test('null and array request bodies are rejected before any model call',async()=>{
+ const old=globalThis.fetch;let called=false;
+ try{
+  globalThis.fetch=async()=>{called=true;throw Error('must not call a model');};
+  for(const body of [null,[]])assert.equal((await worker.fetch(query('/generate','POST',body),env)).status,400);
+  assert.equal(called,false);
+ }finally{globalThis.fetch=old;}
+});

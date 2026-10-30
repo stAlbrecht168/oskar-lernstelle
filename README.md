@@ -69,11 +69,25 @@ Zusammengehörige JSON-Dateien werden als ein Datensatz gespeichert. Vor dem ers
 
 Bei einem Speicherfehler bleiben die neuen Änderungen im Arbeitsspeicher. Im Materialdialog bietet der vorhandene Ordnerbutton dann **Erneut lokal speichern** an. Erst die Meldung **Alle Änderungen wurden lokal gespeichert** bestätigt den vollständigen Schreibvorgang. Bis dahin die Seite geöffnet lassen und bei Bedarf ein privates JSON-Backup herunterladen. Nicht bestätigte Änderungen können bei einem Browserabbruch verloren gehen; wiederhergestellt wird der letzte vollständig bestätigte Stand. Originaldateien werden erst entfernt, nachdem das Löschen der zugehörigen Quelle erfolgreich gespeichert wurde. Ein laufender Import oder eine offene Übung/Reise muss vor einem Ordnerwechsel beendet oder geschlossen werden. Verspätete KI-Antworten aus dem vorherigen Speicher werden nicht in den neuen übernommen.
 
-JSON-Backups enthalten jetzt auch Klassenarbeiten und ihre Lernschwerpunkte. Die Wiederherstellung validiert den gesamten Inhalt vor der Übernahme und verwendet im Ordner denselben Schreibschutz; im Browser schützt ein temporäres Wiederherstellungsjournal den Austausch der Speicherschlüssel. Für größere eigene Exporte wurde die Importgrenze von 3 auf 32 MB erhöht. Bei älteren Backups ohne einzelne Datengruppen erklärt die Bestätigung, welche vorhandenen Gruppen erhalten bleiben. Originaldateien selbst sind nicht im JSON-Backup enthalten und müssen separat privat gesichert werden.
+JSON-Backups enthalten jetzt auch Klassenarbeiten und ihre Lernschwerpunkte. Die Wiederherstellung validiert den gesamten Inhalt vor der Übernahme und verwendet im Ordner denselben Schreibschutz; im Browser schützt ein temporäres Wiederherstellungsjournal den Austausch der Speicherschlüssel. Für größere eigene Exporte wurde die Importgrenze von 3 auf 32 MB erhöht. Bei älteren Backups ohne einzelne Datengruppen erklärt die Bestätigung, welche vorhandenen Gruppen erhalten bleiben. Originaldateien selbst sind nicht im älteren JSON-Backup enthalten. Verwende für einen vollständigen Umzug das ZIP-Backup im Material-Tab (siehe unten).
 
 **Grenzen:** Nur einen Tab pro Speicherordner verwenden und die Dateien nicht gleichzeitig in anderen Programmen bearbeiten. Für mehrere Tabs oder externe Schreibprozesse gibt es keine gemeinsame Sperre oder automatische Konfliktauflösung. Die Wiederherstellung setzt einen weiterhin lesbaren Datenträger und gültige Zugriffsrechte voraus. Sie schützt nicht vor einem vollständigen Datenträgerausfall und ersetzt keine separate private Sicherung. Die bisherigen Aufbewahrungsgrenzen des Lerntrackings bleiben bestehen.
 
 Speicherregressionen mit vollständig synthetischem Dateisystem: `node --test tests/local-folder-runtime.test.mjs tests/storage-integrations.test.mjs`.
+
+## Vollständiges privates ZIP-Backup
+
+Im Material-Tab der Materialbibliothek stehen beim lokalen Speicherort **Vollständiges Backup herunterladen** und **Backup wiederherstellen** bereit. Auf dem bisherigen Rechner zuerst den Speicherordner verbinden und das ZIP herunterladen. Auf dem neuen Rechner Chrome oder Edge öffnen, einen leeren lokalen Zielordner verbinden, dann das ZIP auswählen und den geprüften Austausch der Lerndaten bestätigen. Das ZIP muss privat auf den anderen Rechner übertragen werden. Es enthält keine Zugangscodes oder KI-Konfiguration. Das bisherige JSON-Backup bleibt für ältere Sicherungen verfügbar.
+
+Das vollständige ZIP enthält alle sieben JSON-Datengruppen sowie sämtliche Dateien aus `local-data/Originaldateien/<fach>/`, einschließlich nicht mehr referenzierter Originale. Fehlende verknüpfte Originale oder unbekannte Unterordner brechen den Export ab. `manifest.json` verwendet das Format `oskar-full-backup`, Version `1`, und führt für jede Nutzdatei den relativen Pfad, ihre Bytezahl und eine SHA-256-Prüfsumme auf. Das ZIP wird ohne Kompression erstellt. Importiert werden ausschließlich diese streng geprüften ZIP-STORE-Archive, keine ZIP64-, verschlüsselten oder anderweitig komprimierten Archive. Grenzen: 256 MiB für das Archiv, 64 MiB je Datei, 32 MiB je JSON-Datengruppe, 2000 ZIP-Einträge einschließlich Manifest, 1 MiB für das Manifest.
+
+Der Import prüft zunächst das komplette ZIP einschließlich zentralem Verzeichnis, CRC32, Manifest, SHA-256, Dateimengen, Pfaden, allen Datengruppen und Originalverweisen. Pfadwechsel, absolute und Windows-Pfade, doppelte oder nur in der Großschreibung unterschiedliche Namen, Gerätezielnamen und unbekannte Nutzdateien werden abgewiesen. Erst anschließend wird die Austauschbestätigung angezeigt. Bei ungültigen Archiven findet kein Zugriff auf den Zielordner statt.
+
+Originale werden unter neuen eindeutigen Dateinamen im jeweiligen Fachordner geschrieben; die Materialverweise werden entsprechend angepasst. Bereits vorhandene Originale bleiben erhalten. Das bestehende Journal sichert vor dem ersten Dateischreibzugriff sowohl die bisherigen sieben Datengruppen als auch die Liste neu angelegter Originale. Fehler und ein Neustart vor dem vollständigen Commit stellen die bisherigen Metadaten wieder her und entfernen ausschließlich die neu angelegten Originale. Bei unvollständiger Wiederherstellung bleibt das Journal für den nächsten Verbindungsversuch erhalten. Während Export oder Übernahme wird ein Speicherwechsel blockiert; laufende Importe und Übungen müssen vorher abgeschlossen werden.
+
+**Grenzen:** Backups sind unverschlüsselt. Prüfsummen erkennen Beschädigungen, belegen aber nicht die Vertrauenswürdigkeit eines Archivs. Nur eigene private Sicherungen importieren. Das Archiv wird im Arbeitsspeicher verarbeitet; bei großen Sicherungen wird entsprechend zusätzlicher RAM benötigt. Der Schutz vor gleichzeitigen Änderungen durch andere Tabs oder externe Programme bleibt auf die oben beschriebene Ein-Tab-Nutzung begrenzt. Erfolgreich bestätigte Wiederherstellungen ersetzen die sieben Datengruppen; eine weitere Rückgängig-Funktion gibt es nicht. Vor einem Austausch bei Bedarf ein eigenes vollständiges Backup herunterladen.
+
+Synthetische Node-Regressionen: `node --test tests/local-folder-runtime.test.mjs`. Chrome-Prüfung: `PLAYWRIGHT_MODULE=/absoluter/pfad/playwright-core/index.mjs node tests/browser-full-backup.mjs` (alternativ lokal verfügbares Paket `playwright`). Sie verwendet temporäre isolierte Chrome-Profile und native OPFS-Dateisysteme für Quellrechner, Zielrechner und Browserneustart. Externe Anfragen werden blockiert. Der native Betriebssystem-Ordnerdialog und echte Schuldateien sind kein Teil dieses automatisierten Tests.
 
 ## Lernpfad-Fortschritt statt doppelter Statistik
 
@@ -177,6 +191,41 @@ Dann `http://127.0.0.1:8000` öffnen. Alternativ in VS Code **Terminal > Aufgabe
 Der Server bindet ausschließlich an `127.0.0.1`. Er liefert nur `index.html` und die zehn ausdrücklich freigegebenen JavaScript-Dateien der App aus. Verzeichnislisten, Pfadwechsel, kodierte alternative Pfade und symbolische Links auf Dateien werden abgewiesen. `local-data/`, `Originaldateien/`, `.git/`, Umgebungsdateien, Secrets, Worker-Code, Tests und interne Dokumente sind über diesen Server nicht abrufbar. Neue öffentliche App-Dateien müssen ausdrücklich zur Freigabeliste in `scripts/dev-server.mjs` hinzugefügt werden. Für die Vorschau diesen Server verwenden, da allgemeine Repository-Server private Dateien mit ausliefern können.
 
 Frontend- und Server-Tests: `node --test tests/*.test.mjs`. Die Server-Tests verwenden ausschließlich synthetische Dateien in temporären Ordnern. Für den Worker: `cd worker && npm test`.
+
+## End-to-End-Prüfung des Lernablaufs
+
+`tests/browser-learning-flow.mjs` erzeugt ausschließlich ein synthetisches Text-PDF zum Thema Liter und Milliliter (Klasse 5). Der Test lädt es über die sichtbare Materialverwaltung hoch, liest es mit der tatsächlich eingebundenen PDF.js-Version 3.11.174 und verwendet native Chrome-Dateisystemhandles in temporären OPFS-Profilen. Der Ordnerbutton wird über die Oberfläche bedient; nur der Betriebssystem-Ordnerdialog ist durch die Auswahl dieses synthetischen Testordners ersetzt.
+
+Die Anfragen laufen durch den echten lokalen Worker-Code einschließlich Authentifizierung, Responses-API-Anfrageformat und Quellenvalidierung. Ausschließlich der OpenAI-Netzwerkaufruf liefert erfundene Testantworten. Die lokale Testumgebung verwendet frei erfundene Zugriffswerte, keine Secrets. PDF.js und sein Worker werden aus einem lokalen Paket über abgefangene Bibliotheksanfragen ausgeliefert; alle sonstigen externen Abrufe werden blockiert. Es werden keine Dateien aus dem privaten Repository-Ordner `local-data/` gelesen.
+
+Für die Browserprüfung werden Chrome und die Testpakete `playwright-core` sowie `pdfjs-dist@3.11.174` benötigt. Sie können außerhalb des Repositorys installiert werden, beispielsweise:
+
+```bash
+npm install --prefix /tmp/oskar-e2e --ignore-scripts --package-lock=false playwright-core pdfjs-dist@3.11.174
+PLAYWRIGHT_MODULE=/tmp/oskar-e2e/node_modules/playwright-core/index.mjs PDFJS_DIST=/tmp/oskar-e2e/node_modules/pdfjs-dist node tests/browser-learning-flow.mjs
+```
+
+Geprüft werden Desktop (1200 px) und Mobilansicht (390 px), tatsächliche PDF-Textextraktion, Fachauswahl, Originaldatei und Datenspeicherung, sechs automatisch freigeschaltete Quizfragen und drei Lernkarten einschließlich Quellenbelegen, alle Levels, Feedback, XP, Fachfortschritt, Neuladen sowie die Fehlerwiederholung für Quiz- und Lernkartenfragen. Derselbe Dateiinhalt beziehungsweise derselbe vollständig ausgelesene Text wird innerhalb eines Fachs nicht erneut importiert. Erneute KI-Erzeugung verwendet denselben validierten Pfad und behält bei unveränderten Fragen und Antworten die IDs, damit Fortschritt und Fehlerverweise erhalten bleiben. Eine parallele Analyse derselben Quelle wird verhindert. Wiederholte Levels vergeben die Wiederholungs-XP anstelle einer erneuten Erstabschluss-Belohnung.
+
+Fehlerprüfungen umfassen beschädigte und zu große PDFs, Netzwerkfehler am Gateway und beim Modellanbieter, ungültiges JSON, falsche Antwortstrukturen, unbelegte Inhalte und einen erfolgreichen erneuten Versuch über den sichtbaren Button. V8-Funktionsabdeckung stellt sicher, dass die Kernfunktionen der Anwendung tatsächlich ausgeführt werden. `tests/learning-pipeline.test.mjs` und die Worker-Tests ergänzen isolierte Prüfungen für Quellenfilter, stabile IDs, parallele Erzeugung, Timeouts und fehlerhafte Modellantworten. Das ist keine vollständige Zweigabdeckung der gesamten Anwendung.
+
+**Einmalige Einrichtung bleibt erforderlich:** Für passende KI-Übungen muss der lokale Ordner verbunden und ein gültiger privater KI-Zugriffscode eingerichtet sein. Der Test hinterlegt ausschließlich einen erfundenen Code für den vollständig abgefangenen Testdienst. Ohne Code bleibt das Material gespeichert und der Lernstart mit ausdrücklich gekennzeichneten Beispielaufgaben möglich; quellenbasierte KI-Aufgaben entstehen erst nach Einrichtung. Nach erfolgreicher Verarbeitung startet **Jetzt mit deinem Schulstoff üben** direkt die passende Lektion ohne technischen Dialog oder Freigabeschritt.
+
+**Manuell zu prüfen:** Betriebssystem-Ordnerauswahl und Berechtigungsentzug, tatsächliche OCR gescannter PDFs/Fotos, externe Bibliotheksdownloads unter echten Netzwerkbedingungen, Bedienung auf physischen Mobilgeräten und die didaktische Qualität echter Modellantworten. Die Browserprüfung verwendet Text-PDFs; sie belegt keine OCR-Erkennungsqualität und keine vollständige Konformität mit dem niedersächsischen Lehrplan. Produktive Modellaufrufe sind für diesen Test weder nötig noch erlaubt.
+
+## Animierte Geschichten-Intros
+
+Die erste Station der Wasserreise und die Einstiege eigener Entdeckerreisen verwenden dekorative Three.js-Szenen: Wasser, Pflanzen, Erde, Licht, Daten oder ein Buch. Die Szene illustriert das Thema, sie ist kein Schulquellenbeleg. Der Text und **Spur aufnehmen** bleiben sofort verfügbar. Die Animation läuft höchstens sieben sichtbare Sekunden und lässt sich pausieren oder überspringen. Beim Wechsel der Station oder Schließen des Dialogs werden Animationsschleife, Geometrien, Materialien und WebGL-Kontext freigegeben. Im Hintergrund pausiert die Animation.
+
+Three.js ist auf Version 0.180.0 festgelegt und wird ausschließlich beim Öffnen eines Intros bei verfügbarer WebGL2-Unterstützung von jsDelivr geladen. Dafür findet eine normale externe Bibliotheksanfrage statt, ohne Schultexte oder Zugangscodes. Bei reduzierter Bewegung, fehlendem WebGL oder einem fehlgeschlagenen Download bleibt ein statisches Titelbild sichtbar. Lernstand, Aufgaben und XP werden durch das Intro nicht verändert. Es sind keine Änderungen am Worker oder an den Deployment-Einstellungen nötig.
+
+Browserprüfung mit installiertem Chrome und außerhalb des Repositorys installierten Paketen `playwright-core` und `three@0.180.0`:
+
+```bash
+PLAYWRIGHT_MODULE=/pfad/playwright-core/index.mjs THREE_DIST=/pfad/three node tests/browser-story-intros.mjs
+```
+
+Die Prüfung verwendet echte Three.js-Geometrien mit Chrome-Software-WebGL, lokale Bibliotheksfixtures und synthetische Reisen. Sie prüft Desktop und Mobilansicht, alle Motive, Pause/Fortsetzen, Überspringen, automatisches Ende, Freigabe beim Stationswechsel sowie statische Rückfälle bei reduzierter Bewegung, fehlendem WebGL und Downloadfehlern. Tatsächliche GPU-Treiber und physische Mobilgeräte bleiben manuell zu prüfen. Grundlage für das Rendering und die Freigabe: [Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer).
 
 ## Nächste Arbeiten
 

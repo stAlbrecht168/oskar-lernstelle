@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
 
 function source(file, start, end) {
   const text=readFileSync(new URL('../'+file,import.meta.url),'utf8');
@@ -17,7 +18,7 @@ function deferred(){
 function context(extra={}){
   let generation=1;
   const sandbox={
-    AbortSignal, ...extra,
+    AbortSignal, crypto:webcrypto, Uint8Array, ...extra,
     oskarLocal:{getContext:()=>generation,isCurrent:old=>old===generation,isSwitching:()=>false,isReady:()=>true,...extra.oskarLocal}
   };
   sandbox.window=sandbox;
@@ -157,7 +158,7 @@ test('upload does not attach an original from the previous folder to the new sta
     persist(){throw Error('stale material saved');}
   });
   vm.runInNewContext(source('auto-material-v09.js','async function ingestSchoolFile','const AUTO_MATERIAL_STYLES'),sandbox);
-  const operation=sandbox.ingestSchoolFile({name:'synthetic.txt',type:'text/plain'});
+  const operation=sandbox.ingestSchoolFile({name:'synthetic.txt',type:'text/plain',arrayBuffer:async()=>new TextEncoder().encode('Synthetic upload').buffer});
   await began.promise;
   switchFolder();pending.resolve('Originaldateien/math/synthetic.txt');
   await operation;

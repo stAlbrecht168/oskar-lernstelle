@@ -21,3 +21,6 @@ node_modules/
 /entdeckerreisen.json
 /fachverbindungen.json
 /Originaldateien/
+
+# Private full exports including original school files
+oskar-vollstaendig-*.zip

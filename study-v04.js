@@ -26,7 +26,7 @@ function activateExistingAiExercises(){
 }
 activateExistingAiExercises();
 function saveTasks(){try{localStorage.setItem(TASK_KEY,JSON.stringify(aiTasks));return true}catch{toast('Speicher voll. Bitte Backup erstellen.');return false}}
-function sourceTasks(id){return aiTasks.filter(t=>t.subject===id&&t.status==='approved').map(t=>({q:t.question,a:t.options,correct:t.correctIndex,why:t.explanation+' Quelle: '+t.sourceTitle+' · „'+t.evidence+'“',origin:id,index:'ai:'+t.id,custom:true,type:t.type,sourceTitle:t.sourceTitle}));}
+function sourceTasks(id){return aiTasks.filter(t=>t.subject===id&&t.status==='approved').map(t=>({q:t.question,a:t.options,correct:t.correctIndex,why:t.explanation+' Quelle: '+t.sourceTitle+' · „'+t.evidence+'“',origin:id,index:'ai:'+t.id,custom:true,type:t.type,sourceId:t.sourceId,sourceTitle:t.sourceTitle}));}
 function realQuestions(id){return [...sourceTasks(id),...generatedQuestions(id)];}
 function hasSources(id){return store.materials.some(m=>m.subject===id);}
 function levelStudyKey(id,level){const keys=realQuestions(id).map(q=>q.index).sort().join('|');let h=5381;for(let i=0;i<keys.length;i++)h=((h<<5)+h)^keys.charCodeAt(i);return 'study:'+id+':'+level+':'+(h>>>0).toString(36);}
@@ -58,20 +58,22 @@ render=function(){originalRender();
 };
 const originalRenderQuestion=renderQuestion;
 renderQuestion=function(){originalRenderQuestion();if(!session)return;const ex=subject(session.items[session.index].origin);$('questionKicker').textContent=ex.name+' · '+(session.review?'Wiederholung':'Level '+(session.level+1));};
-startLesson=function(id,level,errorsOnly=false){let items;
+startLesson=function(id,level,errorsOnly=false,sourceId=null){let items;
  if(errorsOnly){items=store.errors.map(findErrorQuestion).filter(Boolean).slice(0,8);if(!items.length){toast('Noch keine Fehler zum Wiederholen.');return;}}
- else if(realQuestions(id).length){items=lessonItems(id,level);}
+ else if(realQuestions(id).length){items=sourceId?realQuestions(id).filter(q=>q.sourceId===sourceId).slice(0,3):lessonItems(id,level);}
  else items=levelQuestions(id,level).map(q=>({...q,origin:id,index:BANK[id].indexOf(q)}));
+ if(!items.length){toast('Für dieses Material werden noch Übungen vorbereitet.');return;}
  session={id,level,items,index:0,chosen:null,checked:false,correctCount:0,review:errorsOnly,custom:realQuestions(id).length>0};
  $('lessonOverlay').classList.add('show');document.body.style.overflow='hidden';renderQuestion();
 };
 const originalFindErrorQuestion=findErrorQuestion;
 findErrorQuestion=function(entry){if(typeof entry.index==='string'&&entry.index.startsWith('ai:'))return sourceTasks(entry.subject).find(q=>q.index===entry.index)||null;return originalFindErrorQuestion(entry);};
 const originalFinishLesson=finishLesson;
-finishLesson=function(){if(session?.custom&&!session.review){const {id,level,correctCount,items}=session;const passed=correctCount>=Math.ceil(items.length*.66);if(passed&&!store.completed.includes(levelStudyKey(id,level)))store.completed.push(levelStudyKey(id,level));
+finishLesson=function(){if(session?.custom&&!session.review){const {id,level,correctCount,items}=session;const alreadyCompleted=isLevelDone(id,level);const passed=correctCount>=Math.ceil(items.length*.66);if(passed&&!store.completed.includes(levelStudyKey(id,level)))store.completed.push(levelStudyKey(id,level));
  const originalKey=id+':'+level; // Alte Demo-Erfolge werden nicht als Erfolge für neues Material gezählt.
  store.completed=store.completed.filter(k=>k!==originalKey);
  // Die alte Abschlussfunktion vergibt weiterhin XP und zeigt das Ergebnis an.
+ if(alreadyCompleted)store.completed.push(originalKey);
  originalFinishLesson();store.completed=store.completed.filter(k=>k!==originalKey);persist();render();return;}
  originalFinishLesson();};
 const originalPrint=printWorksheet;
@@ -115,7 +117,7 @@ $('aiEndpoint').value=localStorage.getItem('oskar-ai-endpoint')||'';
 $('aiEndpoint').addEventListener('change',()=>{const val=$('aiEndpoint').value.trim();if(val.startsWith('https://'))localStorage.setItem('oskar-ai-endpoint',val);else localStorage.removeItem('oskar-ai-endpoint');});
 $('testAi').addEventListener('click',async()=>{let url=$('aiEndpoint').value.trim().replace(/\/+$/,'');if(!/^https:\/\/[^\s/]+/.test(url)){toast('Bitte zuerst die HTTPS-Adresse des Workers eingeben.');return;}const status=$('aiStatus');status.textContent='Prüfe KI-Dienst …';try{const result=await fetch(url+'/health');const payload=await result.json();status.textContent=result.ok&&payload.ok&&payload.configured?'KI-Dienst erreichbar und konfiguriert.':'Der Worker ist erreichbar, aber noch nicht vollständig eingerichtet.';}catch{status.textContent='KI-Dienst nicht erreichbar. Bitte Adresse und Bereitstellung prüfen.';}});
 // Bestehende Funktion ergänzen: Die KI liefert geprüfte Entwürfe für Karten und abwechslungsreiche Quizaufgaben.
-createAiCardsForMaterial=async function(id){if(window.oskarLocal?.isSwitching?.())return;const context=window.oskarLocal?.getContext?.()??0;const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context))&&store.materials.includes(m);const m=materialById(id);if(!m)return;const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,''),token=$('aiToken').value.trim();if(!/^https:\/\/[^\s/]+/.test(endpoint)||!token){toast('Bitte HTTPS-Adresse und persönlichen Zugriffscode eingeben.');openMaterials();return;}
+createAiCardsForMaterial=async function(id){if(window.oskarLocal?.isSwitching?.())return;const context=window.oskarLocal?.getContext?.()??0;const current=()=>!window.oskarLocal?.isSwitching?.()&&(!window.oskarLocal?.isCurrent||window.oskarLocal.isCurrent(context))&&store.materials.includes(m);const m=materialById(id);if(!m)return;if(typeof analyzeUploadedMaterial==='function'&&window.oskarLocal?.isReady()){await analyzeUploadedMaterial(m);return;}const endpoint=$('aiEndpoint').value.trim().replace(/\/+$/,''),token=$('aiToken').value.trim();if(!/^https:\/\/[^\s/]+/.test(endpoint)||!token){toast('Bitte HTTPS-Adresse und persönlichen Zugriffscode eingeben.');openMaterials();return;}
  const status=$('aiStatus');status.textContent='KI erstellt Fragen aus „'+m.title+'“ …';
  try{const response=await fetch(endpoint+'/generate',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({subject:subject(m.subject).name,text:m.text.slice(0,18000)})});const result=await response.json();if(!current())return;if(!response.ok)throw new Error(result.error||'Dienst meldet '+response.status);
  const norm=s=>String(s).toLocaleLowerCase('de-DE').replace(/\s+/g,' ').trim();const supported=(result.cards||[]).filter(c=>typeof c.term==='string'&&typeof c.definition==='string'&&typeof c.evidence==='string'&&norm(m.text).includes(norm(c.evidence))).slice(0,10);

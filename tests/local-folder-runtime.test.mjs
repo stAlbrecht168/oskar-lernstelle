@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
 
 const source = readFileSync(new URL('../local-folder-v10.js', import.meta.url), 'utf8');
 const FILES = {
@@ -99,13 +100,13 @@ function memoryFolder(name = 'synthetic-repository') {
           async getFile() {
             await operation('read', path + '/' + filename);
             const content = files.get(filename);
-            return {size:content.length, async text() { return content; }};
+            return {size:content.length, async text() { return typeof content==='string'?content:new TextDecoder().decode(content); }, async arrayBuffer(){ return typeof content==='string'?new TextEncoder().encode(content).buffer:Uint8Array.from(content).buffer; }};
           },
           async createWritable() {
             await operation('writable', path + '/' + filename);
             let pending = '', aborted = false;
             return {
-              async write(value) { await operation('write', path + '/' + filename, value); pending = typeof value === 'string' ? value : await value.text(); },
+              async write(value) { await operation('write', path + '/' + filename, value); pending = typeof value === 'string' ? value : value instanceof Uint8Array ? Uint8Array.from(value) : await value.text(); },
               async close() { await operation('close', path + '/' + filename, pending); if (!aborted) files.set(filename, pending); },
               async abort() { aborted = true; await operation('abort', path + '/' + filename); }
             };
@@ -116,6 +117,7 @@ function memoryFolder(name = 'synthetic-repository') {
         await operation('remove', path + '/' + filename);
         if (!files.delete(filename) && !directories.delete(filename)) throw notFound();
       },
+      async *entries() { yield* directories; for (const [name] of files) yield [name, await this.getFileHandle(name)]; },
       async isSameEntry(other) { return other === this; },
       async queryPermission() { return 'granted'; }, async requestPermission() { return 'granted'; }
     };
@@ -140,7 +142,7 @@ function runtime(initial = emptyDataset(), {browserData} = {}) {
   let assessments = clone(initial.assessments), paints = 0;
   const sandbox = {
     document:{createElement:element, getElementById:id => elements.get(id) || null},
-    crypto:{randomUUID:() => 'synthetic-transaction-id'}, structuredClone, DOMException,
+    crypto:webcrypto, TextEncoder, TextDecoder, Uint8Array, DataView, Map, Blob, structuredClone, DOMException,
     EXAMS:[{id:'math'}, {id:'biology'}], KEY:BROWSER_KEYS[0], CARD_KEY:BROWSER_KEYS[1], TASK_KEY:BROWSER_KEYS[2],
     store:{...clone(initial.progress), materials:clone(initial.materials)}, cards:clone(initial.cards), aiTasks:clone(initial.tasks),
     journeyState:clone(initial.journeys), connectionsCache:clone(initial.connections),
@@ -560,4 +562,195 @@ test('metadata reads during original deletion pin the folder against restore and
   await removing;
   assert.deepEqual(app.state(), changed);
   assert.equal(math.files.has(item.id + '-synthetic.txt'), false);
+});
+
+async function seedOriginals(folder,data){
+ const base=await folder.data.getDirectoryHandle('Originaldateien',{create:true});
+ const originals=new Map([
+  ['Originaldateien/math/synthetic.pdf',new Uint8Array([37,80,68,70,45,49,46,55,10,0,255])],
+  ['Originaldateien/biology/synthetic.jpg',new Uint8Array([255,216,255,0,1,2,255,217])],
+  ['Originaldateien/math/synthetic.txt',new TextEncoder().encode('Nur synthetischer Beispieltext.')]
+ ]);
+ data.materials[0].originalPath='Originaldateien/math/synthetic.pdf';
+ data.materials[1].originalPath='Originaldateien/biology/synthetic.jpg';
+ for(const [path,bytes] of originals){const parts=path.split('/'),subject=await base.getDirectoryHandle(parts[1],{create:true});subject.files.set(parts[2],bytes);}
+ return originals;
+}
+async function fullFixture(){
+ const expected=dataset('full'),folder=memoryFolder('source'),originals=await seedOriginals(folder,expected);
+ folder.seed(expected);const app=runtime();await app.api.connect(folder.handle);
+ const blob=await app.api.exportFullBackup();return {expected,folder,originals,app,blob,zip:app.sandbox.OskarBackupZip};
+}
+async function originalBytes(folder,path){
+ const parts=path.split('/');return [...folder.data.directories.get(parts[0]).directories.get(parts[1]).files.get(parts[2])];
+}
+async function alteredBlob(fixture,change,{rehash=false}={}){
+ const entries=fixture.zip.unpack(new Uint8Array(await fixture.blob.arrayBuffer()));
+ await change(entries);
+ if(rehash){entries.delete('manifest.json');return new Blob([await fixture.zip.create(entries)]);}
+ return new Blob([fixture.zip.pack(entries)]);
+}
+
+test('full ZIP includes all seven groups, binary originals, orphan originals and versioned SHA-256 manifest',async()=>{
+ const f=await fullFixture(),entries=f.zip.unpack(new Uint8Array(await f.blob.arrayBuffer()));
+ const manifest=JSON.parse(f.zip.decode(entries.get('manifest.json')));
+ assert.equal(manifest.version,1);assert.equal(manifest.format,'oskar-full-backup');
+ assert.equal(manifest.files.length,10);
+ for(const file of manifest.files){assert.equal(file.size,entries.get(file.path).length);assert.equal(file.sha256,await f.zip.sha(entries.get(file.path)));}
+ for(const [path,bytes] of f.originals)assert.deepEqual([...entries.get(path)],[...bytes]);
+ for(const [group,name] of Object.entries(FILES))assert.deepEqual(JSON.parse(f.zip.decode(entries.get(name))),f.expected[group]);
+});
+
+test('full restore into empty folder survives a fresh runtime with all data and binary originals intact',async()=>{
+ const f=await fullFixture(),folder=memoryFolder('destination'),app=runtime();await app.api.connect(folder.handle);
+ assert.equal(await app.api.restoreFullBackup(f.blob),true);
+ const state=app.state(),expected=clone(f.expected);
+ for(let i=0;i<expected.materials.length;i++){
+  assert.notEqual(state.materials[i].originalPath,expected.materials[i].originalPath);
+  assert.deepEqual(await originalBytes(folder,state.materials[i].originalPath),[...f.originals.get(expected.materials[i].originalPath)]);
+  expected.materials[i].originalPath=state.materials[i].originalPath;
+ }
+ assert.deepEqual(state,expected);
+ const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),expected);
+ const again=restarted.sandbox.OskarBackupZip.unpack(new Uint8Array(await (await restarted.api.exportFullBackup()).arrayBuffer()));
+ assert.equal([...again.keys()].filter(p=>p.startsWith('Originaldateien/')).length,3);
+ assert.equal(folder.data.files.has('.oskar-transaction.json'),false);
+});
+
+for(const mode of ['truncated','checksum','missing','extra','invalid-json','missing-reference','slip','duplicate','compression','oversized-entry','bad-central','invalid-manifest-version']){
+ test('invalid ZIP '+mode+' changes neither current state nor destination files',async()=>{
+  const f=await fullFixture();let blob;
+  if(mode==='truncated')blob=f.blob.slice(0,-1);
+  else if(mode==='slip'){
+   const bytes=new Uint8Array(await f.blob.arrayBuffer());
+   // Replace a same-length ASCII name in local and central headers.
+   const from=new TextEncoder().encode('materialien.json'),to=new TextEncoder().encode('../evilfile.json');
+   for(let i=0;i<=bytes.length-from.length;i++)if(from.every((v,j)=>bytes[i+j]===v))bytes.set(to,i);
+   blob=new Blob([bytes]);
+  }else if(['compression','oversized-entry','bad-central'].includes(mode)){
+   const bytes=new Uint8Array(await f.blob.arrayBuffer()),v=new DataView(bytes.buffer);
+   if(mode==='compression')v.setUint16(8,8,true);
+   if(mode==='oversized-entry')v.setUint32(22,0xffffffff,true);
+   if(mode==='bad-central')v.setUint32(bytes.length-6,0xffffffff,true);
+   blob=new Blob([bytes]);
+  }else blob=await alteredBlob(f,entries=>{
+   if(mode==='checksum'){const m=JSON.parse(f.zip.decode(entries.get('manifest.json')));m.files[0].sha256='0'.repeat(64);entries.set('manifest.json',f.zip.encode(JSON.stringify(m)));}
+   if(mode==='invalid-manifest-version'){const m=JSON.parse(f.zip.decode(entries.get('manifest.json')));m.version=999;entries.set('manifest.json',f.zip.encode(JSON.stringify(m)));}
+   if(mode==='missing')entries.delete('Originaldateien/math/synthetic.pdf');
+   if(mode==='extra')entries.set('unexpected.txt',f.zip.encode('synthetic'));
+   if(mode==='invalid-json')entries.set('lernstand.json',f.zip.encode('{broken'));
+   if(mode==='missing-reference')entries.delete('Originaldateien/math/synthetic.pdf');
+   if(mode==='duplicate'){const m=JSON.parse(f.zip.decode(entries.get('manifest.json')));m.files[1]=m.files[0];entries.set('manifest.json',f.zip.encode(JSON.stringify(m)));}
+  },{rehash:['invalid-json','missing-reference'].includes(mode)});
+  const expected=dataset('existing'),folder=memoryFolder('target').seed(expected),app=runtime();await app.api.connect(folder.handle);
+  const before=folder.image(),events=folder.events.length;let approved=false;
+  await assert.rejects(app.api.restoreFullBackup(blob,{approve(){approved=true;return true;}}));
+  assert.deepEqual(app.state(),expected);assert.deepEqual(folder.image(),before);
+  assert.equal(folder.events.length,events,'invalid archive must not access destination');assert.equal(approved,false);
+ });
+}
+
+test('full backup rejects oversized archive before reading and requires an explicitly connected folder',async()=>{
+ const app=runtime();await assert.rejects(app.api.exportFullBackup());
+ const folder=memoryFolder();await app.api.connect(folder.handle);
+ await assert.rejects(app.api.restoreFullBackup({size:257*1024*1024,arrayBuffer(){throw Error('must not read');}}),/zu groß/);
+});
+
+test('missing original aborts export instead of issuing an incomplete full backup',async()=>{
+ const app=runtime(),data=dataset();data.materials[0].originalPath='Originaldateien/math/missing.pdf';
+ await app.api.connect(memoryFolder().seed(data).handle);await assert.rejects(app.api.exportFullBackup(),/Originaldatei fehlt/);
+});
+
+test('cancelling a valid restore leaves all destination data intact',async()=>{
+ const f=await fullFixture(),app=runtime(),folder=memoryFolder().seed(dataset('existing'));await app.api.connect(folder.handle);
+ const before=folder.image();assert.equal(await app.api.restoreFullBackup(f.blob,{approve:()=>false}),false);assert.deepEqual(folder.image(),before);
+});
+
+for(const phase of ['write','close'])for(const location of ['original','metadata']){
+ test('full restore '+phase+' failure in '+location+' rolls back data and removes only newly staged originals',async()=>{
+  const f=await fullFixture(),old=dataset('old'),folder=memoryFolder('destination'),oldOriginals=await seedOriginals(folder,old);
+  folder.seed(old);const app=runtime();await app.api.connect(folder.handle);const before=folder.primary();
+  folder.fail(e=>e.phase===phase&&(location==='original'?e.name.startsWith('restore-'):e.name==='aufgaben.json'));
+  await assert.rejects(app.api.restoreFullBackup(f.blob));assert.deepEqual(app.state(),old);assert.deepEqual(folder.primary(),before);
+  for(const [path,bytes] of oldOriginals)assert.deepEqual(await originalBytes(folder,path),[...bytes]);
+  for(const dir of folder.data.directories.get('Originaldateien').directories.values())assert.equal([...dir.files.keys()].some(n=>n.startsWith('restore-')),false);
+  const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),old);
+ });
+}
+
+test('interrupted full restore recovers both metadata and staged originals on a fresh runtime',async()=>{
+ const f=await fullFixture(),old=dataset('old'),folder=memoryFolder().seed(old),app=runtime();await app.api.connect(folder.handle);
+ let reached;const writing=new Promise(resolve=>{reached=resolve;});
+ folder.fail(e=>e.phase==='close'&&e.name==='aufgaben.json',()=>{reached();return new Promise(()=>{});});
+ void app.api.restoreFullBackup(f.blob);await writing;
+ assert.equal(folder.data.files.has('.oskar-transaction.json'),true);
+ const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),old);
+ assert.equal(folder.data.files.has('.oskar-transaction.json'),false);
+ for(const dir of folder.data.directories.get('Originaldateien').directories.values())assert.equal(dir.files.size,0);
+});
+
+test('failed cleanup retains the journal and a fresh connection completes recovery',async()=>{
+ const f=await fullFixture(),old=dataset('old'),folder=memoryFolder().seed(old),app=runtime();await app.api.connect(folder.handle);
+ const failure=folder.fail(e=>e.phase==='close'&&e.name==='aufgaben.json');
+ folder.fail(e=>failure.used&&e.phase==='remove'&&e.name.startsWith('restore-'));
+ await assert.rejects(app.api.restoreFullBackup(f.blob));assert.equal(folder.data.files.has('.oskar-transaction.json'),true);
+ const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),old);
+ assert.equal(folder.data.files.has('.oskar-transaction.json'),false);
+});
+
+test('ZIP paths reject traversal, Windows paths, ambiguous aliases, devices and case duplicates',()=>{
+ const zip=runtime().sandbox.OskarBackupZip;
+ for(const path of ['../x','/x','C:/x','a\\b','a//b','a/./b','a/../b','a/%2e%2e/x','a/CON.txt','a/file.','a/ü.pdf','a\0b'])assert.throws(()=>zip.path(path));
+ assert.throws(()=>zip.pack(new Map([['a',new Uint8Array()],['A',new Uint8Array()]])));
+});
+
+test('a validly checksummed archive with an unknown payload or missing data group is still refused',async()=>{
+ const f=await fullFixture(),app=runtime(),folder=memoryFolder().seed(dataset('existing'));await app.api.connect(folder.handle);const before=folder.image();
+ for(const mutate of [entries=>entries.set('unexpected.txt',f.zip.encode('synthetic')),entries=>entries.delete('aufgaben.json')]){
+  const blob=await alteredBlob(f,mutate,{rehash:true});await assert.rejects(app.api.restoreFullBackup(blob));assert.deepEqual(folder.image(),before);
+ }
+});
+
+test('CRC detects altered payload bytes even before manifest validation',async()=>{
+ const f=await fullFixture(),bytes=new Uint8Array(await f.blob.arrayBuffer());bytes[50]^=1;
+ assert.throws(()=>f.zip.unpack(bytes));
+});
+
+test('restore preflight refuses an existing generated destination filename without overwriting it',async()=>{
+ const f=await fullFixture(),old=dataset('old'),folder=memoryFolder().seed(old),app=runtime();await app.api.connect(folder.handle);
+ const id='00000000-0000-4000-8000-000000000000';
+ app.sandbox.crypto={subtle:webcrypto.subtle,randomUUID:()=>id};
+ const base=await folder.data.getDirectoryHandle('Originaldateien',{create:true}),math=await base.getDirectoryHandle('math',{create:true});
+ const name='restore-'+id+'-0-synthetic.pdf';math.files.set(name,new Uint8Array([17,18,19]));
+ const before=folder.primary();await assert.rejects(app.api.restoreFullBackup(f.blob),/existiert bereits/);
+ assert.deepEqual([...math.files.get(name)],[17,18,19]);assert.deepEqual(folder.primary(),before);assert.deepEqual(app.state(),old);
+});
+
+test('interruption during original writing cleans staged files and restores previous data after restart',async()=>{
+ const f=await fullFixture(),old=dataset('old'),folder=memoryFolder().seed(old),app=runtime();await app.api.connect(folder.handle);
+ let reached;const writing=new Promise(resolve=>{reached=resolve;});
+ folder.fail(e=>e.phase==='close'&&e.name.startsWith('restore-'),()=>{reached();return new Promise(()=>{});});
+ void app.api.restoreFullBackup(f.blob);await writing;
+ const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),old);
+ for(const dir of folder.data.directories.get('Originaldateien').directories.values())assert.equal(dir.files.size,0);
+});
+
+test('editing data while originals are exported aborts the backup and preserves the newer state',async()=>{
+ const f=await fullFixture();let reached,release;
+ const reading=new Promise(resolve=>{reached=resolve;}),gate=new Promise(resolve=>{release=resolve;});
+ f.folder.fail(e=>e.phase==='read'&&e.name==='synthetic.pdf',()=>{reached();return gate;});
+ const exporting=f.app.api.exportFullBackup();await reading;
+ const newer=clone(f.expected);newer.progress.xp=777;f.app.setState(newer);f.app.api.snapshot();release();
+ await assert.rejects(exporting,/geändert/);await f.app.api.flush();assert.deepEqual(f.app.state(),newer);
+ const restarted=runtime();await restarted.api.connect(f.folder.handle);assert.deepEqual(restarted.state(),newer);
+});
+
+test('editing data during an original restore rolls back before saving the newer current state',async()=>{
+ const f=await fullFixture(),old=dataset('old'),folder=memoryFolder().seed(old),app=runtime();await app.api.connect(folder.handle);
+ let reached,release;const writing=new Promise(resolve=>{reached=resolve;}),gate=new Promise(resolve=>{release=resolve;});
+ folder.fail(e=>e.phase==='close'&&e.name.startsWith('restore-'),()=>{reached();return gate;});
+ const restoring=app.api.restoreFullBackup(f.blob);await writing;
+ const newer=dataset('newer');app.setState(newer);app.api.snapshot();release();
+ await assert.rejects(restoring);await app.api.flush();assert.deepEqual(app.state(),newer);
+ const restarted=runtime();await restarted.api.connect(folder.handle);assert.deepEqual(restarted.state(),newer);
 });
